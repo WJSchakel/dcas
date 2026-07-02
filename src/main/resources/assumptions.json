@@ -3,5 +3,6 @@
   "penetrationHigh": 0.3,
   "activationRate": 0.5,
   "vGainDcas": "50.0km/h",
-  "socioDcas": 0.25
+  "socioDcas": 0.25,
+  "tocNonResponseRate": 0.001
 }

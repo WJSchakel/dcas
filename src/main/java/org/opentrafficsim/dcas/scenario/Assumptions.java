@@ -16,9 +16,10 @@ import org.opentrafficsim.dcas.Serialization;
  * @param activationRate rate of activation on vehicles with DCAS
  * @param vGainDcas vGain parameter value for drivers with DCAS activated
  * @param socioDcas socio parameter value for drivers with DCAS activated
+ * @param tocNonResponseRate DCAS driver transition-of-control non-response rate
  */
 public record Assumptions(double penetrationLow, double penetrationHigh, double activationRate, Speed vGainDcas,
-        double socioDcas)
+        double socioDcas, double tocNonResponseRate)
 {
 
     /** Singleton instance returned by {@code get()}. */
