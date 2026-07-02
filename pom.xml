@@ -1,0 +1,103 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.opentrafficsim</groupId>
+  <artifactId>ots-dcas</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>ots-dcas</name>
+  <url>http://maven.apache.org</url>
+
+  <properties>
+    <jdk.version>17</jdk.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <ots.version>1.8.0</ots.version>
+    <maven.checkstyle.version>3.6.0</maven.checkstyle.version>
+    <checkstyle.version>10.21.3</checkstyle.version>
+    <junit.version>5.10.0</junit.version>
+    <config.location>config</config.location>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.opentrafficsim</groupId>
+      <artifactId>ots-editor</artifactId>
+      <version>${ots.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  
+  <build>
+    <directory>target</directory>
+    <sourceDirectory>${basedir}/src/main/java</sourceDirectory>
+    <testSourceDirectory>${basedir}/src/test/java</testSourceDirectory>
+    <outputDirectory>${basedir}/target/classes</outputDirectory>
+    <testOutputDirectory> ${basedir}/target/test-classes</testOutputDirectory>
+    
+    <resources>
+      <resource>
+        <directory>${basedir}/src/main/resources</directory>
+        <targetPath>${project.build.directory}/classes/resources</targetPath>
+        <filtering>false</filtering>
+      </resource>
+    </resources>
+    <testResources>
+      <testResource>
+        <directory>${basedir}/src/test/resources</directory>
+        <targetPath>${project.build.directory}/test-classes/resources</targetPath>
+        <filtering>false</filtering>
+      </testResource>
+    </testResources>
+    
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven.checkstyle.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${checkstyle.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+    </plugins>
+  </build>
+  
+  <reporting>
+    <outputDirectory>${basedir}/target/site</outputDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${maven.checkstyle.version}</version>
+        <configuration>
+          <!-- This allows checkstyle in maven to understand ${config_loc} within dsol-checks.xml -->
+          <propertyExpansion>config_loc=${config.location}</propertyExpansion>
+          <configLocation>${config.location}/dsol-checks.xml</configLocation>
+        </configuration>
+        <reportSets>
+          <reportSet>
+            <configuration>
+              <enableRulesSummary>true</enableRulesSummary>
+            </configuration>
+            <reports>
+              <report>checkstyle</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+    </plugins>
+  </reporting>
+  
+</project>
