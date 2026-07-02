@@ -1,0 +1,7 @@
+{
+  "penetrationLow": 0.05,
+  "penetrationHigh": 0.3,
+  "activationRate": 0.5,
+  "vGainDcas": "50.0km/h",
+  "socioDcas": 0.25
+}
