@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:LinkTypes xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:LinkType Id="HIGHWAY">
+    <ots:Compatibility GtuType="VEHICLE" />
+    <ots:Compatibility GtuType="CAR" />
+    <ots:Compatibility GtuType="DCAS" />
+    <ots:Compatibility GtuType="TRUCK" />
+    <ots:SpeedLimit>100km/h</ots:SpeedLimit>
+  </ots:LinkType>
+</ots:LinkTypes>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:DetectorTypes xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:DetectorType Id="VEHICLE">
+    <ots:Compatibility GtuType="VEHICLE"/>
+  </ots:DetectorType>
+</ots:DetectorTypes>

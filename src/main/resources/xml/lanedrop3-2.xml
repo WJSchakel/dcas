@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:Ots xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:Definitions>
+    <xi:include href="src/main/resources/xml/definitions/gtu_types.xml">
+      <xi:fallback>
+        <xi:include href="definitions/gtu_types.xml"/>
+      </xi:fallback>
+    </xi:include>
+    <xi:include href="src/main/resources/xml/definitions/gtu_templates.xml">
+      <xi:fallback>
+        <xi:include href="definitions/gtu_templates.xml"/>
+      </xi:fallback>
+    </xi:include>
+    <xi:include href="src/main/resources/xml/definitions/link_types.xml">
+      <xi:fallback>
+        <xi:include href="definitions/link_types.xml"/>
+      </xi:fallback>
+    </xi:include>
+    <xi:include href="src/main/resources/xml/definitions/stripe_types.xml">
+      <xi:fallback>
+        <xi:include href="definitions/stripe_types.xml"/>
+      </xi:fallback>
+    </xi:include>
+    <xi:include href="src/main/resources/xml/definitions/lane_types.xml">
+      <xi:fallback>
+        <xi:include href="definitions/lane_types.xml"/>
+      </xi:fallback>
+    </xi:include>
+    <xi:include href="src/main/resources/xml/definitions/lane_biases.xml">
+      <xi:fallback>
+        <xi:include href="definitions/lane_biases.xml"/>
+      </xi:fallback>
+    </xi:include>
+    <xi:include href="src/main/resources/xml/definitions/road_layouts.xml">
+      <xi:fallback>
+        <xi:include href="definitions/road_layouts.xml"/>
+      </xi:fallback>
+    </xi:include>
+    <xi:include href="src/main/resources/xml/definitions/detector_types.xml">
+      <xi:fallback>
+        <xi:include href="definitions/detector_types.xml"/>
+      </xi:fallback>
+    </xi:include>
+  </ots:Definitions>
+  <ots:Network>
+    <ots:Node Coordinate="(0,0)" Id="A"/>
+    <ots:Node Coordinate="(1000,0)" Id="B"/>
+    <ots:Node Coordinate="(1100.0,-3.5)" Id="C"/>
+    <ots:Node Coordinate="(2000,-3.5)" Id="D"/>
+    <ots:Link Id="A-B" NodeEnd="B" NodeStart="A" Type="HIGHWAY">
+      <ots:Straight/>
+      <ots:DefinedLayout>3LANE</ots:DefinedLayout>
+    </ots:Link>
+    <ots:Link Id="B-C" NodeEnd="C" NodeStart="B" OffsetStart="-3.5m" Type="HIGHWAY">
+      <ots:Straight/>
+      <ots:DefinedLayout>2LANE</ots:DefinedLayout>
+    </ots:Link>
+    <ots:Link Id="C-D" NodeEnd="D" NodeStart="C" Type="HIGHWAY">
+      <ots:Straight/>
+      <ots:DefinedLayout>2LANE_WORKS</ots:DefinedLayout>
+    </ots:Link>
+  </ots:Network>
+  <ots:Run>
+    <ots:RunLength>1h</ots:RunLength>
+  </ots:Run>
+</ots:Ots>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:LaneTypes xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:LaneType Id="HIGHWAY">
+    <ots:Compatibility GtuType="VEHICLE"/>
+  </ots:LaneType>
+</ots:LaneTypes>

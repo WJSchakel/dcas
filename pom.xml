@@ -15,9 +15,9 @@
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <ots.version>1.8.0</ots.version>
+    <ots.version>1.8.1</ots.version>
     <maven.checkstyle.version>3.6.0</maven.checkstyle.version>
-    <checkstyle.version>10.21.3</checkstyle.version>
+    <checkstyle.version>12.1.0</checkstyle.version>
     <junit.version>5.10.0</junit.version>
     <config.location>config</config.location>
   </properties>
@@ -25,8 +25,18 @@
   <dependencies>
     <dependency>
       <groupId>org.opentrafficsim</groupId>
+      <artifactId>ots-demo</artifactId>
+      <version>${ots.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opentrafficsim</groupId>
       <artifactId>ots-editor</artifactId>
       <version>${ots.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.djutils</groupId>
+      <artifactId>djutils-base</artifactId>
+      <version>2.4.2</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>

@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:RoadLayouts xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:RoadLayout Id="3LANE" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="4">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RIGHT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="3">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="MIDDLE" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LEFT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+  </ots:RoadLayout>
+  <ots:RoadLayout Id="2LANE" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="3">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RIGHT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LEFT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+  </ots:RoadLayout>
+  <ots:RoadLayout Id="1LANE" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LANE" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+  </ots:RoadLayout>
+  <ots:RoadLayout Id="3LANE+RAMP" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="5">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RAMP" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="4">
+      <ots:DefinedStripe>BLOCK</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RIGHT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="3">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="MIDDLE" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LEFT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+  </ots:RoadLayout>
+  <ots:RoadLayout Id="2LANE+RAMP" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="4">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RAMP" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="3">
+      <ots:DefinedStripe>BLOCK</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RIGHT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LEFT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+  </ots:RoadLayout>
+  <ots:RoadLayout Id="1LANE+RAMP" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="3">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RAMP" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>BLOCK</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LANE" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+  </ots:RoadLayout>
+  <ots:RoadLayout Id="3LANE_WORKS" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="4">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RIGHT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="3">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="MIDDLE" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LEFT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+  </ots:RoadLayout>
+  <ots:RoadLayout Id="2LANE_WORKS" LinkType="HIGHWAY">
+    <ots:Shoulder>
+      <ots:Width>3.5m</ots:Width>
+    </ots:Shoulder>
+    <ots:Stripe Id="3">
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="RIGHT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="2">
+      <ots:DefinedStripe>DASHED</ots:DefinedStripe>
+    </ots:Stripe>
+    <ots:Lane Id="LEFT" LaneType="HIGHWAY">
+      <ots:Width>3.5m</ots:Width>
+    </ots:Lane>
+    <ots:Stripe Id="1">
+      <ots:CenterOffset>0.0m</ots:CenterOffset>
+      <ots:DefinedStripe>CONTINUOUS</ots:DefinedStripe>
+    </ots:Stripe>
+  </ots:RoadLayout>
+</ots:RoadLayouts>

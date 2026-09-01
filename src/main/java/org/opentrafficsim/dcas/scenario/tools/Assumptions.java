@@ -1,7 +1,9 @@
-package org.opentrafficsim.dcas.scenario;
+package org.opentrafficsim.dcas.scenario.tools;
 
+import org.djunits.value.vdouble.scalar.Acceleration;
+import org.djunits.value.vdouble.scalar.Duration;
+import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
-import org.opentrafficsim.dcas.Serialization;
 
 /**
  * Data container for all assumptions. Any changes to this class need to be reflected in the resource file
@@ -14,12 +16,25 @@ import org.opentrafficsim.dcas.Serialization;
  * @param penetrationLow low DCAS penetration rate (vehicle has DCAS)
  * @param penetrationHigh high DCAS penetration rate (vehicle has DCAS)
  * @param activationRate rate of activation on vehicles with DCAS
+ * @param s0Dcas DCAS IDM car-following stopping distance
+ * @param TDcas DCAS IDM car-following time headway
+ * @param aDcas DCAS IDM car-following acceleration parameter
+ * @param bDcas DCAS IDM car-following deceleration parameter
+ * @param b0Dcas DCAS IDM car-following adjustment deceleration parameter
+ * @param deltaDcas DCAS IDM car-following delta parameter
+ * @param maxBDcas DCAS maximum deceleration
+ * @param minTtcDcas DCAS LC minimum TTC
+ * @param minTDcas DCAS LC minimum time headway
+ * @param bStopDcas deceleration for in-lane minimum risk maneuver
+ * @param dtDcas DCAS system time step
  * @param vGainDcas vGain parameter value for drivers with DCAS activated
  * @param socioDcas socio parameter value for drivers with DCAS activated
  * @param tocNonResponseRate DCAS driver transition-of-control non-response rate
  */
-public record Assumptions(double penetrationLow, double penetrationHigh, double activationRate, Speed vGainDcas,
-        double socioDcas, double tocNonResponseRate)
+public record Assumptions(double penetrationLow, double penetrationHigh, double activationRate, Length s0Dcas, Duration TDcas,
+        Acceleration aDcas, Acceleration bDcas, Acceleration b0Dcas, double deltaDcas, Acceleration maxBDcas,
+        Duration minTtcDcas, Duration minTDcas, Acceleration bStopDcas, Duration dtDcas, Speed vGainDcas, double socioDcas,
+        double tocNonResponseRate)
 {
 
     /** Singleton instance returned by {@code get()}. */

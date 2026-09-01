@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:StripeTypes xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:StripeType Id="CONTINUOUS" LeftChangeLane="false" RightChangeLane="false">
+    <ots:Elements>
+      <ots:Line Width="20cm">
+        <ots:Continuous/>
+      </ots:Line>
+    </ots:Elements>
+  </ots:StripeType>
+  <ots:StripeType Id="DASHED" LeftChangeLane="true" RightChangeLane="true">
+    <ots:Elements>
+      <ots:Line Width="20cm">
+        <ots:Dashed>
+          <ots:GapDash>
+            <ots:Gap>9m</ots:Gap>
+            <ots:Dash>3m</ots:Dash>
+          </ots:GapDash>
+        </ots:Dashed>
+      </ots:Line>
+    </ots:Elements>
+  </ots:StripeType>
+  <ots:StripeType Id="BLOCK" LeftChangeLane="true" RightChangeLane="true">
+    <ots:Elements>
+      <ots:Line Width="40cm">
+        <ots:Dashed>
+          <ots:GapDash>
+            <ots:Gap>3m</ots:Gap>
+            <ots:Dash>1m</ots:Dash>
+          </ots:GapDash>
+        </ots:Dashed>
+      </ots:Line>
+    </ots:Elements>
+  </ots:StripeType>
+</ots:StripeTypes>

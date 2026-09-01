@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:GtuTypes xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:GtuType Id="VEHICLE"/>
+  <ots:GtuType Id="CAR" Parent="VEHICLE"/>
+  <ots:GtuType Id="DCAS" Parent="CAR"/>
+  <ots:GtuType Id="TRUCK" Parent="VEHICLE"/>
+</ots:GtuTypes>

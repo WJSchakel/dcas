@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:GtuTemplates xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:GtuTemplate GtuType="CAR" Id="CAR">
+    <ots:LengthDist LengthUnit="m">
+      <ots:Constant C="4.19"/>
+    </ots:LengthDist>
+    <ots:WidthDist LengthUnit="m">
+      <ots:Constant C="1.7"/>
+    </ots:WidthDist>
+    <ots:MaxSpeedDist SpeedUnit="km/h">
+      <ots:Constant C="180"/>
+    </ots:MaxSpeedDist>
+  </ots:GtuTemplate>
+  <ots:GtuTemplate GtuType="TRUCK" Id="TRUCK">
+    <ots:LengthDist LengthUnit="m">
+      <ots:Constant C="12"/>
+    </ots:LengthDist>
+    <ots:WidthDist LengthUnit="m">
+      <ots:Constant C="2.55"/>
+    </ots:WidthDist>
+    <ots:MaxSpeedDist SpeedUnit="km/h">
+      <ots:NormalTrunc Max="110" Min="70" Mu="90" Sigma="2.5"/>
+    </ots:MaxSpeedDist>
+  </ots:GtuTemplate>
+</ots:GtuTemplates>

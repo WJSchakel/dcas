@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ots:LaneBiases xmlns:ots="http://www.opentrafficsim.org/ots" xmlns:xi="http://www.w3.org/2001/XInclude" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ots:LaneBias Bias="1.0" GtuType="CAR">
+    <ots:FromLeft>0.0</ots:FromLeft>
+  </ots:LaneBias>
+  <ots:LaneBias Bias="5.0" GtuType="TRUCK" StickyLanes="2">
+    <ots:FromRight>0.0</ots:FromRight>
+  </ots:LaneBias>
+</ots:LaneBiases>

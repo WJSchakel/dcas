@@ -21,7 +21,7 @@
     <module name="JavadocVariable">
       <property name="severity" value="warning"/>
     </module>
-    <module name="JavadocStyle">
+    <module name="SummaryJavadoc">
       <property name="severity" value="warning"/>
     </module>
     <module name="ConstantName">
