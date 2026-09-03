@@ -45,7 +45,7 @@ public class RoadWorks extends AbstractSimulationScript
     private String xmlScenario;
 
     /** Number of lanes. */
-    @Option(names = "--lanes", description = "Number of lanes, 2 or 3", defaultValue = "3")
+    @Option(names = "--lanes", description = "Number of lanes", defaultValue = "3")
     private int lanes;
 
     /** Truck fraction. */
@@ -115,7 +115,7 @@ public class RoadWorks extends AbstractSimulationScript
             GtuType truck = this.gtuTypes.get("TRUCK");
 
             Node nodeA = network.getNode("A").get();
-            Node nodeD = network.getNode("D").get();
+            Node nodeE = network.getNode("E").get();
 
             /*
              * The categorization is how demand is further specified beyond just O-D. For example per GTU type. The
@@ -131,7 +131,7 @@ public class RoadWorks extends AbstractSimulationScript
              * durationVector, Interpolation.STEPWISE, 0.7).
              */
             List<Node> origins = Collections.singletonList(nodeA);
-            List<Node> destinations = Collections.singletonList(nodeD);
+            List<Node> destinations = Collections.singletonList(nodeE);
             Categorization categorization = new Categorization("categorization", GtuType.class);
             DurationVector globalDurationVector = new DurationVector(new double[] {0, 20, 60}, DurationUnit.MINUTE);
             Interpolation globalInterPolation = Interpolation.LINEAR;
@@ -142,11 +142,11 @@ public class RoadWorks extends AbstractSimulationScript
                     new double[] {this.demand.si * .5, this.demand.si, this.demand.si * .5}, FrequencyUnit.SI);
 
             Category carCategory = new Category(categorization, car); // can add Route.class instance
-            odMatrix.putDemandVector(nodeA, nodeD, carCategory, demandVector, (1.0 - this.fTruck) * (1.0 - this.fDcas));
+            odMatrix.putDemandVector(nodeA, nodeE, carCategory, demandVector, (1.0 - this.fTruck) * (1.0 - this.fDcas));
             Category dcasCategory = new Category(categorization, dcas);
-            odMatrix.putDemandVector(nodeA, nodeD, dcasCategory, demandVector, (1.0 - this.fTruck) * this.fDcas);
+            odMatrix.putDemandVector(nodeA, nodeE, dcasCategory, demandVector, (1.0 - this.fTruck) * this.fDcas);
             Category truckCategory = new Category(categorization, truck);
-            odMatrix.putDemandVector(nodeA, nodeD, truckCategory, demandVector, this.fTruck);
+            odMatrix.putDemandVector(nodeA, nodeE, truckCategory, demandVector, this.fTruck);
 
             ModelSetup.applyOd(network, xmlParser, definitions, odMatrix);
 

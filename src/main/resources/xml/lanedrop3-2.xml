@@ -46,7 +46,8 @@
     <ots:Node Coordinate="(0,0)" Id="A"/>
     <ots:Node Coordinate="(1000,0)" Id="B"/>
     <ots:Node Coordinate="(1100.0,-3.5)" Id="C"/>
-    <ots:Node Coordinate="(2000,-3.5)" Id="D"/>
+    <ots:Node Coordinate="(1300,0.0)" Id="D"/>
+    <ots:Node Coordinate="(2000,0.0)" Id="E"/>
     <ots:Link Id="A-B" NodeEnd="B" NodeStart="A" Type="HIGHWAY">
       <ots:Straight/>
       <ots:DefinedLayout>3LANE</ots:DefinedLayout>
@@ -58,6 +59,10 @@
     <ots:Link Id="C-D" NodeEnd="D" NodeStart="C" Type="HIGHWAY">
       <ots:Straight/>
       <ots:DefinedLayout>2LANE_WORKS</ots:DefinedLayout>
+    </ots:Link>
+    <ots:Link Id="D-E" NodeEnd="E" NodeStart="D" Type="HIGHWAY">
+      <ots:Straight/>
+      <ots:DefinedLayout>3LANE</ots:DefinedLayout>
     </ots:Link>
   </ots:Network>
   <ots:Run>
