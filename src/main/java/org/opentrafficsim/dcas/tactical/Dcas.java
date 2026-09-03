@@ -1,6 +1,7 @@
 package org.opentrafficsim.dcas.tactical;
 
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -11,9 +12,9 @@ import org.djunits.value.vdouble.scalar.Duration;
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
 import org.djutils.exceptions.Throw;
+import org.djutils.exceptions.Try;
 import org.opentrafficsim.base.DistancedObject;
 import org.opentrafficsim.base.OtsRuntimeException;
-import org.opentrafficsim.base.logger.Logger;
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterSet;
 import org.opentrafficsim.base.parameters.ParameterType;
@@ -52,7 +53,8 @@ import org.opentrafficsim.road.network.Shoulder;
 
 /**
  * DCAS (Driver Control Assistance System, ~SAE Level 2) functionality. This class can be used as a component within a tactical
- * planner. Interaction between the tactical planner and this component operates as follows.
+ * planner in that it implements {@link DcasUserInterface}. Interaction between the tactical planner and this component operates
+ * as follows.
  * <ul>
  * <li>This class is supplied a {@code Consumer<Boolean>} through which a Transition Of Control request signal is sent each time
  * this component runs. This signal is either {@code true} or {@code false}. For the tactical planner this can be as simple as
@@ -60,16 +62,25 @@ import org.opentrafficsim.road.network.Shoulder;
  * <li>This class is supplied a {@code Supplier<LateralDirectionality>} through which the current state of a user-requested lane
  * change is supplied to this component upon its request. For the tactical planner this can be a simple forward of an internal
  * property, e.g. {@code () -> this.lcRequest}.</li>
+ * <li>This class is supplied a {@code Supplier<Acceleration>} through which the current state of a user-requested throttle
+ * acceleration is supplied to this component upon its request. For the tactical planner this can be a simple forward of an
+ * internal property, e.g. {@code () -> this.throttleRequest}.</li>
+ * <li>This class is supplied a {@code Supplier<Acceleration>} through which the current state of a user-requested brake
+ * acceleration is supplied to this component upon its request. For the tactical planner this can be a simple forward of an
+ * internal property, e.g. {@code () -> this.brakeRequest}.</li>
  * <li>The method {@link #getSimplePlan} can be invoked by the tactical planner to let the DCAS system run. The resulting plan
  * will have a duration equal to the system time. It is up to the tactical planner to, after that time, obtain a plan again.
  * That is, assuming the system was not disabled in the meantime.</li>
  * <li>The tactical planner can use {@link #isEnabled} and {@link #setEnabled} to control the enabled state of the system. Other
  * than checks, this has no effect on the internal mechanisms of the system. This information is for the tactical planner.</li>
- * <li>The tactical planner should use {@link #setDesiredSpeed} to set the speed at which DCAS will drive. The system has no
- * autonomous way to determine the speed to drive at and does not regard signs or other information.</li>
- * <li>Finally, method {@link #setLoweredSpeed} is for internal DCAS functions and should <b>NOT</b> be used by the tactical
- * planner. Functions added to the system can use this method to reduce the operational speed due to reasons specific to the
- * function. If these reasons are no longer valid, the desired speed still applies.</li>
+ * <li>The tactical planner should use {@link #setUserSpeed} to set the speed at which DCAS will drive. The system has no
+ * autonomous way to determine the speed to drive at and does not regard signs or other information. For internal reasons the
+ * system may drive at a different speed.</li>
+ * <li>Method {@link #getAcceleration} can be used by the tactical planner to continue a previous plan, that was interrupted for
+ * reasons of the tactical planner that are not part of DCAS functionality itself. For example, for some intermediate human
+ * evaluation step that results in no action of the human driver.</li>
+ * <li>Remaining public methods are implementations of methods in {@link DcasSystemInterface} and are for internal DCAS
+ * functions. Functions added to the system can use these methods.</li>
  * </ul>
  * <p>
  * Copyright (c) 2026-2026 Delft University of Technology, PO Box 5, 2600 AA, Delft, the Netherlands. All rights reserved.<br>
@@ -77,7 +88,7 @@ import org.opentrafficsim.road.network.Shoulder;
  * @author Wouter Schakel
  * @author Saeed Rahmani
  */
-public class Dcas
+public class Dcas implements DcasSystemInterface, DcasUserInterface
 {
 
     /** Length over which DCAS is network and signs aware. */
@@ -113,6 +124,7 @@ public class Dcas
 
     /** Settings for DCAS. */
     // Global for now, may become specific per GTU in the future.
+    // TODO: Both human behavior with DCAS and DCAS systems should be different for various GTU types
     private static final ParameterSet DCAS_SETTINGS = new ParameterSet();
 
     static
@@ -148,14 +160,24 @@ public class Dcas
     /** Consumer that will be activated when DCAS requests transition of control. */
     private final Consumer<Boolean> transitionOfControl;
 
+    /** User throttle request. */
+    private final Supplier<Acceleration> userThrottleRequest;
+
+    /** User brake request. */
+    private final Supplier<Acceleration> userBrakeRequest;
+
     /** DCAS functions. */
-    private final Set<BiFunction<TacticalContextEgo, Dcas, DcasFunctionResult>> functions = new LinkedHashSet<>();
+    private final Set<BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult>> functions =
+            new LinkedHashSet<>();
 
-    /** Speed to apply when lower than desired speed, as set by a DCAS function. */
-    private Speed loweredSpeed;
+    /** User speed. */
+    private Speed userSpeed;
 
-    /** Desired speed. */
-    private Speed desiredSpeed;
+    /** Speed to apply when lower than user speed, as set by a DCAS function. */
+    private Speed loweredSystemSpeed;
+
+    /** Acceleration as determined by the DCAS functions. */
+    private Acceleration acceleration;
 
     /** Last operation was at Transition Of Control priority. */
     private boolean transitionOfControlState = false;
@@ -167,19 +189,25 @@ public class Dcas
      * Constructor.
      * @param transitionOfControl consumer that will be activated when DCAS requests transition of control
      * @param userLcRequest supplier of the latest user lane change request
+     * @param userThrottleRequest supplier of the latest user throttle request, which may be {@code null}
+     * @param userBrakeRequest supplier of the latest user brake request, which may be {@code null}
      */
-    public Dcas(final Consumer<Boolean> transitionOfControl, final Supplier<LateralDirectionality> userLcRequest)
+    public Dcas(final Consumer<Boolean> transitionOfControl, final Supplier<LateralDirectionality> userLcRequest,
+            final Supplier<Acceleration> userThrottleRequest, final Supplier<Acceleration> userBrakeRequest)
     {
         // The desired headway and speed model for DCAS ignore the parameters from the GTU, and use local settings instead
         DesiredHeadwayModel sModel = (params, v) -> Length.ofSI(
                 DCAS_SETTINGS.getParameter(ParameterTypes.S0).si + DCAS_SETTINGS.getParameter(ParameterTypes.T).si * v.si);
         DesiredSpeedModel vModel = (params, vLims, vMax) -> Speed.min(vMax,
-                this.loweredSpeed == null ? this.desiredSpeed : Speed.min(this.loweredSpeed, this.desiredSpeed));
+                this.loweredSystemSpeed == null ? this.userSpeed : Speed.min(this.loweredSystemSpeed, this.userSpeed));
         this.carFollowingModel = new IdmPlus(sModel, vModel);
         this.transitionOfControl = transitionOfControl;
+        this.userThrottleRequest = userThrottleRequest;
+        this.userBrakeRequest = userBrakeRequest;
 
         this.functions.add(new DcasFunctionInfrastructure());
-        this.functions.add(new DcasFunctionUserLcRequest(userLcRequest));
+        this.functions.add(new DcasFunctionUserLcRequest(userLcRequest)); // might translate request in DcasFunctionResult
+        this.functions.add(new DcasFunctionCarFollowing());
     }
 
     /**
@@ -194,75 +222,145 @@ public class Dcas
         DCAS_SETTINGS.setParameter(parameter, value);
     }
 
-    /**
-     * Sets the enabled status of DCAS. This is controlled by the human part of the tactical model.
-     * @param enabled enabled status
-     */
+    @Override
     public void setEnabled(final boolean enabled)
     {
         this.enabled = enabled;
     }
 
-    /**
-     * Returns enabled status of DCAS.
-     * @return enabled status of DCAS
-     */
+    @Override
     public boolean isEnabled()
     {
         return this.enabled;
     }
 
-    /**
-     * Sets the desired speed for DCAS. This method should be called by the human side of the tactical planner. The system may
-     * decide to drive slower than this value.
-     * @param desiredSpeed desired speed
-     */
-    public void setDesiredSpeed(final Speed desiredSpeed)
+    @Override
+    public void setUserSpeed(final Speed userSpeed)
     {
-        this.desiredSpeed = desiredSpeed;
+        this.userSpeed = userSpeed;
+    }
+
+    @Override
+    public void setLoweredSystemSpeed(final Speed loweredSystemSpeed)
+    {
+        this.loweredSystemSpeed =
+                this.loweredSystemSpeed == null ? loweredSystemSpeed : Speed.min(this.loweredSystemSpeed, loweredSystemSpeed);
+    }
+
+    @Override
+    public void setSystemAcceleration(final Acceleration systemAcceleration)
+    {
+        this.acceleration =
+                this.acceleration == null ? systemAcceleration : Acceleration.min(this.acceleration, systemAcceleration);
+    }
+
+    @Override
+    public Acceleration getAcceleration()
+    {
+        return this.acceleration;
+    }
+
+    @Override
+    public Acceleration getMaximumDeceleration()
+    {
+        return Try.assign(() -> DCAS_SETTINGS.getParameter(MAX_B_DCAS), OtsRuntimeException.class, "Missing parameter %s",
+                MAX_B_DCAS.getId());
     }
 
     /**
-     * Sets a lowered speed for DCAS. This method can be called by system functions that want a lower speed than the standard
-     * desired speed. If the desired speed as set by the driver is lower, this method has no net effect.
-     * @param loweredSpeed lowered speed
+     * {@inheritDoc} This follows one leader based on exact information and using a local IDM+ with local parameters. This
+     * method can be used by one of the DCAS functions.
      */
-    public void setLoweredSpeed(final Speed loweredSpeed)
+    @Override
+    public Acceleration getCarFollowingAcceleration(final TacticalContextEgo context)
     {
-        this.loweredSpeed = this.loweredSpeed == null ? loweredSpeed : Speed.min(this.loweredSpeed, loweredSpeed);
+        try
+        {
+            PerceptionCollectable<PerceivedGtu, LaneBasedGtu> leaders =
+                    context.getPerception().getPerceptionCategory(NeighborsPerception.class).getLeaders(RelativeLane.CURRENT);
+            PerceptionIterableSet<PerceivedObject> leader;
+            if (leaders.isEmpty())
+            {
+                leader = new PerceptionIterableSet<>();
+            }
+            else
+            {
+                // take exact leader information from underlying object
+                DistancedObject<LaneBasedGtu> rawLeader = leaders.underlyingWithDistance().next();
+                leader = new PerceptionIterableSet<>(
+                        new PerceivedObjectBase(rawLeader.object().getId(), ObjectType.GTU, Length.ONE, new Kinematics.Record(
+                                rawLeader.distance(), rawLeader.object().getSpeed(), Acceleration.ZERO, true, Overlap.AHEAD)));
+            }
+            return this.carFollowingModel.followingAcceleration(DCAS_SETTINGS, context.getSpeed(), context.getSpeedLimits(),
+                    context.getMaximumSpeed(), leader);
+        }
+        catch (OperationalPlanException | ParameterException ex)
+        {
+            throw new OtsRuntimeException("Unable to determine car-following acceleration of DCAS system.", ex);
+        }
     }
 
-    /**
-     * Returns simple operational plan (acceleration and lane change decision) of DCAS.
-     * @param context tactical context
-     * @return simple operational plan (acceleration and lane change decision) of DCAS
-     * @throws OperationalPlanException when a perception category is not available
-     * @throws ParameterException when a parameter is not available
-     */
+    @Override
     public SimpleOperationalPlan getSimplePlan(final TacticalContextEgo context)
             throws OperationalPlanException, ParameterException
     {
         Throw.when(!this.enabled, IllegalStateException.class,
                 "DCAS is requested to return a plan, but the system is set to disabled.");
 
-        this.loweredSpeed = null;
+        this.loweredSystemSpeed = null;
+        this.acceleration = null;
         DcasFunctionResult dcasFunctionResult = applyFunctions(context);
 
-        Acceleration acceleration = carFollowingAcceleration(context);
-        Acceleration maxB = DCAS_SETTINGS.getParameter(MAX_B_DCAS).neg();
-        if (acceleration.lt(maxB))
-        {
-            if (dcasFunctionResult.ordinal() < DcasFunctionResult.TRANSITION_OF_CONTROL.ordinal())
-            {
-                Logger.ots().trace("GTU {} requests TOC due to maximum deceleration.", context.getId());
-                dcasFunctionResult = DcasFunctionResult.TRANSITION_OF_CONTROL;
-            }
-            acceleration = maxB;
-        }
         this.transitionOfControlState = dcasFunctionResult.ordinal() == DcasFunctionResult.TRANSITION_OF_CONTROL.ordinal();
         this.minimalRiskManeuverState = dcasFunctionResult.ordinal() > DcasFunctionResult.TRANSITION_OF_CONTROL.ordinal();
         this.transitionOfControl.accept(this.transitionOfControlState);
 
+        Acceleration throttle = this.userThrottleRequest.get();
+        if (throttle != null)
+        {
+            this.acceleration = Acceleration.max(this.acceleration, throttle);
+        }
+        Acceleration brake = this.userBrakeRequest.get();
+        if (brake != null)
+        {
+            this.acceleration = Acceleration.min(this.acceleration, brake);
+        }
+
+        Optional<Acceleration> stop = considerStop(context, dcasFunctionResult);
+        this.acceleration = stop.isPresent() ? Acceleration.min(stop.get(), this.acceleration) : this.acceleration;
+        LateralDirectionality lc = determineLaneChange(context, dcasFunctionResult);
+
+        return new SimpleOperationalPlan(this.acceleration, DCAS_SETTINGS.getParameter(DT_DCAS), lc);
+    }
+
+    @Override
+    public DcasState getState()
+    {
+        if (!this.enabled)
+        {
+            return DcasState.OFF;
+        }
+        if (this.minimalRiskManeuverState)
+        {
+            return DcasState.MRM;
+        }
+        if (this.transitionOfControlState)
+        {
+            return DcasState.TOC;
+        }
+        return DcasState.ON;
+    }
+
+    /**
+     * Returns acceleration to stop, if applicable.
+     * @param context tactical context
+     * @param dcasFunctionResult DCAS function result
+     * @return acceleration to stop, if applicable
+     * @throws ParameterException when a parameter is not available
+     */
+    private Optional<Acceleration> considerStop(final TacticalContextEgo context, final DcasFunctionResult dcasFunctionResult)
+            throws ParameterException
+    {
         if (dcasFunctionResult.ordinal() >= DcasFunctionResult.STOP.ordinal())
         {
             context.addIntent(TurnIndicatorStatus.HAZARD, Length.ZERO);
@@ -273,14 +371,10 @@ public class Dcas
                     || context.getPerception().getLaneStructure().getRootRecord(RelativeLane.CURRENT)
                             .getLane() instanceof Shoulder)
             {
-                acceleration = Acceleration.min(acceleration, DCAS_SETTINGS.getParameter(B_STOP).neg());
+                return Optional.of(DCAS_SETTINGS.getParameter(B_STOP).neg());
             }
         }
-
-        LateralDirectionality lc = determineLaneChange(context, dcasFunctionResult);
-
-        return new SimpleOperationalPlan(acceleration, DCAS_SETTINGS.getParameter(DT_DCAS), lc);
-
+        return Optional.empty();
     }
 
     /**
@@ -389,8 +483,12 @@ public class Dcas
             throws OperationalPlanException, ParameterException
     {
         RelativeLane lane = new RelativeLane(direction, 1);
-        PerceptionCollectable<PerceivedGtu, LaneBasedGtu> leaders =
-                context.getPerception().getPerceptionCategory(NeighborsPerception.class).getLeaders(lane);
+        NeighborsPerception neighbors = context.getPerception().getPerceptionCategory(NeighborsPerception.class);
+        if (neighbors.isGtuAlongside(direction))
+        {
+            return false;
+        }
+        PerceptionCollectable<PerceivedGtu, LaneBasedGtu> leaders = neighbors.getLeaders(lane);
         boolean leaderAllows = acceptGapVehicle(context, leaders, (vEgo, vAdj) -> vEgo, (vEgo, vAdj) -> vEgo.minus(vAdj));
         if (!leaderAllows)
         {
@@ -434,7 +532,7 @@ public class Dcas
     private DcasFunctionResult applyFunctions(final TacticalContextEgo context)
     {
         DcasFunctionResult result = DcasFunctionResult.NONE;
-        for (BiFunction<TacticalContextEgo, Dcas, DcasFunctionResult> function : this.functions)
+        for (BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult> function : this.functions)
         {
             DcasFunctionResult functionResult = function.apply(context, this);
             if (functionResult.ordinal() > result.ordinal())
@@ -443,75 +541,6 @@ public class Dcas
             }
         }
         return result;
-    }
-
-    /**
-     * Returns car-following acceleration for the DCAS system. This follows one leader based on exact information and using a
-     * local IDM+ with local parameters.
-     * @param context tactical context
-     * @return car-following acceleration for the DCAS system
-     * @throws OperationalPlanException when a perception category is not available
-     * @throws ParameterException when a parameter is not available
-     */
-    private Acceleration carFollowingAcceleration(final TacticalContextEgo context)
-            throws OperationalPlanException, ParameterException
-    {
-        PerceptionCollectable<PerceivedGtu, LaneBasedGtu> leaders =
-                context.getPerception().getPerceptionCategory(NeighborsPerception.class).getLeaders(RelativeLane.CURRENT);
-        PerceptionIterableSet<PerceivedObject> leader;
-        if (leaders.isEmpty())
-        {
-            leader = new PerceptionIterableSet<>();
-        }
-        else
-        {
-            // take exact leader information from underlying object
-            DistancedObject<LaneBasedGtu> rawLeader = leaders.underlyingWithDistance().next();
-            leader = new PerceptionIterableSet<>(
-                    new PerceivedObjectBase(rawLeader.object().getId(), ObjectType.GTU, Length.ONE, new Kinematics.Record(
-                            rawLeader.distance(), rawLeader.object().getSpeed(), Acceleration.ZERO, true, Overlap.AHEAD)));
-        }
-        return this.carFollowingModel.followingAcceleration(DCAS_SETTINGS, context.getSpeed(), context.getSpeedLimits(),
-                context.getMaximumSpeed(), leader);
-    }
-
-    /**
-     * Returns DCAS state.
-     * @return DCAS state
-     */
-    public DcasState getState()
-    {
-        if (!this.enabled)
-        {
-            return DcasState.OFF;
-        }
-        if (this.minimalRiskManeuverState)
-        {
-            return DcasState.MRM;
-        }
-        if (this.transitionOfControlState)
-        {
-            return DcasState.TOC;
-        }
-        return DcasState.ON;
-    }
-
-    /**
-     * DCAS state.
-     */
-    public enum DcasState
-    {
-        /** Disabled. */
-        OFF,
-
-        /** Enabled and in normal operation. */
-        ON,
-
-        /** Requesting Transition Of Control. */
-        TOC,
-
-        /** Executing Minimum Risk Maneuver. */
-        MRM;
     }
 
 }

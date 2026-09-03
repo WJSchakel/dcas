@@ -15,7 +15,7 @@ import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
  * @author Wouter Schakel
  * @author Saeed Rahmani
  */
-public class DcasFunctionUserLcRequest implements BiFunction<TacticalContextEgo, Dcas, DcasFunctionResult>
+public class DcasFunctionUserLcRequest implements BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult>
 {
 
     /** User lane change request supplier. */
@@ -31,7 +31,7 @@ public class DcasFunctionUserLcRequest implements BiFunction<TacticalContextEgo,
     }
 
     @Override
-    public DcasFunctionResult apply(final TacticalContextEgo context, final Dcas dcas)
+    public DcasFunctionResult apply(final TacticalContextEgo context, final DcasSystemInterface dcas)
     {
         switch (this.request.get())
         {

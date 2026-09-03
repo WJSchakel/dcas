@@ -24,7 +24,7 @@ import org.opentrafficsim.core.network.LateralDirectionality;
 import org.opentrafficsim.core.network.NetworkException;
 import org.opentrafficsim.core.perception.Historical;
 import org.opentrafficsim.core.perception.HistoricalValue;
-import org.opentrafficsim.dcas.tactical.Dcas.DcasState;
+import org.opentrafficsim.dcas.tactical.DcasUserInterface.DcasState;
 import org.opentrafficsim.road.gtu.LaneBasedGtu;
 import org.opentrafficsim.road.gtu.operational.LaneOperationalPlanBuilder;
 import org.opentrafficsim.road.gtu.operational.SimpleOperationalPlan;
@@ -64,7 +64,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
     private static final DistancedObject<Length> NO_DEVIATION = new DistancedObject<>(Length.ZERO, Length.ZERO);
 
     /** DCAS. */
-    private final Dcas dcas;
+    private final DcasUserInterface dcas;
 
     /** LMRS data. */
     private final LmrsData lmrsData;
@@ -94,11 +94,14 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
     /** Time at which acceleration stimulus started. */
     private Duration startAccelerationStimulus;
 
-    /** Acceleration request (i.e. foot on pedal). */
-    private Acceleration accelerationRequest;
+    /** Throttle request. */
+    private Acceleration throttleRequest;
 
     /** Dynamic time threshold for effective acceleration request trigger. */
-    private Duration accelerationRequestThreshold;
+    private Duration throttleRequestThreshold;
+
+    /** Brake request. */
+    private Acceleration brakeRequest; // not yet used
 
     /**
      * Constructor.
@@ -118,7 +121,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
         this.lmrsData = new LmrsData(synchronization, cooperation, gapAcceptance, tailgating);
         this.toc = new HistoricalValue<Boolean>(gtu.getSimulator().getReplication().getHistoryManager(gtu.getSimulator()), this,
                 false);
-        this.dcas = new Dcas((b) -> this.toc.set(b), () -> this.lcRequest);
+        this.dcas = new Dcas((b) -> this.toc.set(b), () -> this.lcRequest, () -> this.throttleRequest, () -> this.brakeRequest);
 
         // add components that cannot be added through LmrsFactory
         lanePerception.addPerceptionCategory(new PerceptionCategoryToc(lanePerception));
@@ -196,7 +199,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
                 {
                     // if DCAS is on, the human model only functions as context for an LC request and acceleration overruling
                     humanModel(context, startTime);
-                    simplePlan = new SimpleOperationalPlan(context.getAcceleration(), this.nextDcasTime.minus(startTime));
+                    simplePlan = new SimpleOperationalPlan(this.dcas.getAcceleration(), this.nextDcasTime.minus(startTime));
                 }
             }
             else
@@ -204,7 +207,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
                 if (canEnableDcas(context))
                 {
                     Logger.ots().trace("GTU " + getGtu().getId() + " enabled DCAS");
-                    this.dcas.setDesiredSpeed(context.getDesiredSpeed());
+                    this.dcas.setUserSpeed(context.getDesiredSpeed());
                     this.dcas.setEnabled(true);
                     simplePlan = dcasModel(context, startTime);
                 }
@@ -251,13 +254,13 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
             this.startLcStimulus = null;
             this.lcRequest = LateralDirectionality.NONE;
             this.startAccelerationStimulus = null;
-            this.accelerationRequest = null;
+            this.throttleRequest = null;
         }
 
         // overrule with user acceleration
-        if (this.accelerationRequest != null && this.accelerationRequest.gt(simplePlan.getAcceleration()))
+        if (this.throttleRequest != null && this.throttleRequest.gt(simplePlan.getAcceleration()))
         {
-            simplePlan.setAcceleration(this.accelerationRequest);
+            simplePlan.setAcceleration(this.throttleRequest);
         }
         return simplePlan;
     }
@@ -274,7 +277,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
     private SimpleOperationalPlan humanModel(final TacticalContextEgo context, final Duration startTime)
             throws ParameterException, GtuException, NetworkException
     {
-        this.dcas.setDesiredSpeed(context.getDesiredSpeed());
+        this.dcas.setUserSpeed(context.getDesiredSpeed());
         SimpleOperationalPlan simplePlan = LmrsUtil.determinePlan(context, this.lmrsData, this);
         setLcRequest(context, startTime);
         setAccelerationRequest(context, startTime);
@@ -296,10 +299,10 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
      */
     private static boolean canEnableDcas(final TacticalContextEgo context) throws ParameterException
     {
-        double dFree = context.getParameters().getParameter(LmrsParameters.DFREE);
+        double dSync = context.getParameters().getParameter(LmrsParameters.DSYNC);
         double dLeft = context.getParameters().getParameter(LmrsParameters.DLEFT);
         double dRight = context.getParameters().getParameter(LmrsParameters.DRIGHT);
-        return dLeft < dFree && dRight < dFree && context.getAcceleration().ge0();
+        return dLeft < dSync && dRight < dSync && context.getAcceleration().ge0();
     }
 
     /**
@@ -346,15 +349,15 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
                 (t) -> this.startAccelerationStimulus = t);
 
         Duration tRequest = context.getParameters().getParameter(TAU_STIM);
-        if (this.accelerationRequestThreshold == null)
+        if (this.throttleRequestThreshold == null)
         {
-            this.accelerationRequestThreshold = tRequest;
+            this.throttleRequestThreshold = tRequest;
         }
         if (this.startAccelerationStimulus != null
-                && startTime.minus(this.startAccelerationStimulus).ge(this.accelerationRequestThreshold))
+                && startTime.minus(this.startAccelerationStimulus).ge(this.throttleRequestThreshold))
         {
-            this.accelerationRequest = context.getCarFollowingAcceleration();
-            this.accelerationRequestThreshold = Duration.ZERO;
+            this.throttleRequest = context.getCarFollowingAcceleration();
+            this.throttleRequestThreshold = Duration.ZERO;
         }
         /*
          * The time threshold for accelerating is not simply REQUEST_DELAY. This would cause a pronounced saw-tooth speed
@@ -364,10 +367,9 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
          * "0 < threshold < REQUEST_DELAY" after speed has reached v0-vGain and the system slowly decelerates again. The driver
          * will then sooner than REQUEST_DELAY accelerate again. How soon depends on how recent the last acceleration started.
          */
-        double ratio =
-                context.getParameters().getParameter(DT).si / context.getParameters().getParameter(TAU_STIM).si;
-        this.accelerationRequestThreshold =
-                Duration.interpolate(this.accelerationRequestThreshold, tRequest, ratio <= 1.0 ? ratio : 1.0);
+        double ratio = context.getParameters().getParameter(DT).si / context.getParameters().getParameter(TAU_STIM).si;
+        this.throttleRequestThreshold =
+                Duration.interpolate(this.throttleRequestThreshold, tRequest, ratio <= 1.0 ? ratio : 1.0);
     }
 
     /**

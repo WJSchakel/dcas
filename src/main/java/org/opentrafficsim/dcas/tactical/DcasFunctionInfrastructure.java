@@ -25,7 +25,7 @@ import org.opentrafficsim.road.network.LaneChangeInfo;
  * @author Wouter Schakel
  * @author Saeed Rahmani
  */
-public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo, Dcas, DcasFunctionResult>
+public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult>
 {
 
     /** Remaining length per lane change below which DCAS attempts a lane change. */
@@ -44,7 +44,7 @@ public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo
                     Length.ofSI(50.0), NumericConstraint.POSITIVE);
 
     @Override
-    public DcasFunctionResult apply(final TacticalContextEgo context, final Dcas dcas)
+    public DcasFunctionResult apply(final TacticalContextEgo context, final DcasSystemInterface dcas)
     {
         try
         {
