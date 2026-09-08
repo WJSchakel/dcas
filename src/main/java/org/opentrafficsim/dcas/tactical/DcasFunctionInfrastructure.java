@@ -32,17 +32,17 @@ public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo
     /** Remaining length per lane change below which DCAS attempts a lane change. */
     public static final ParameterTypeLength X_LC =
             new ParameterTypeLength("xLC", "Remaining length per lane change below which DCAS attempts a lane change",
-                    Assumptions.get().infraLc(), NumericConstraint.POSITIVE);
+                    Assumptions.get().dcas().infra().infraLc(), NumericConstraint.POSITIVE);
 
     /** Remaining length per lane change below which DCAS requests Transition Of Control. */
     public static final ParameterTypeLength X_TOC =
             new ParameterTypeLength("xToc", "Remaining length per lane change below which DCAS requests Transition Of Control",
-                    Assumptions.get().infraToc(), NumericConstraint.POSITIVE);
+                    Assumptions.get().dcas().infra().infraToc(), NumericConstraint.POSITIVE);
 
     /** Remaining length per lane change below which DCAS performs Minimum Risk Maneuver. */
     public static final ParameterTypeLength X_MRM =
             new ParameterTypeLength("xMrm", "Remaining length per lane change below which DCAS performs Minimum Risk Maneuver",
-                    Assumptions.get().infraMrm(), NumericConstraint.POSITIVE);
+                    Assumptions.get().dcas().infra().infraMrm(), NumericConstraint.POSITIVE);
 
     @Override
     public DcasFunctionResult apply(final TacticalContextEgo context, final DcasSystemInterface dcas)

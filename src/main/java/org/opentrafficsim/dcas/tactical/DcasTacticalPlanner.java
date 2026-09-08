@@ -63,8 +63,8 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
 
     /** Stimulus time for driver to change lane, increase acceleration, or reduce TOC TD. */
     public static final ParameterTypeDuration TAU_STIM = new ParameterTypeDuration("tauStim",
-            "Stimulus time for driver to change lane, increase acceleration, or reduce TOC TD", Assumptions.get().tauStim(),
-            NumericConstraint.POSITIVE);
+            "Stimulus time for driver to change lane, increase acceleration, or reduce TOC TD",
+            Assumptions.get().human().tauStim(), NumericConstraint.POSITIVE);
 
     /** Deviation object in case of no desired deviation. */
     private static final DistancedObject<Length> NO_DEVIATION = new DistancedObject<>(Length.ZERO, Length.ZERO);

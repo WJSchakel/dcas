@@ -153,8 +153,8 @@ public final class ModelSetup
         setDefaultParameter(lmrsFactory, dcas, DcasTacticalPlanner.TAU_STIM);
 
         // regular human parameters
-        lmrsFactory.addParameter(ChannelFuller.TAU_MIN, Assumptions.get().tauMin());
-        lmrsFactory.addParameter(ChannelFuller.TAU_MAX, Assumptions.get().tauMax());
+        lmrsFactory.addParameter(ChannelFuller.TAU_MIN, Assumptions.get().human().tauMin());
+        lmrsFactory.addParameter(ChannelFuller.TAU_MAX, Assumptions.get().human().tauMax());
         lmrsFactory.addParameter(truck, ParameterTypes.A, Acceleration.ofSI(0.8));
 
         OdOptions odOptions = new OdOptions();
@@ -182,12 +182,12 @@ public final class ModelSetup
          */
         ParameterFactoryByType dcasSettings = new ParameterFactoryByType();
 
-        dcasSettings.addParameter(ParameterTypes.S0, Assumptions.get().s0Dcas());
-        dcasSettings.addParameter(ParameterTypes.T, Assumptions.get().TDcas());
-        dcasSettings.addParameter(ParameterTypes.A, Assumptions.get().aDcas());
-        dcasSettings.addParameter(ParameterTypes.B, Assumptions.get().bDcas());
-        dcasSettings.addParameter(ParameterTypes.B0, Assumptions.get().b0Dcas());
-        dcasSettings.addParameter(AbstractIdm.DELTA, Assumptions.get().deltaDcas());
+        dcasSettings.addParameter(ParameterTypes.S0, Assumptions.get().dcas().cf().s0Dcas());
+        dcasSettings.addParameter(ParameterTypes.T, Assumptions.get().dcas().cf().TDcas());
+        dcasSettings.addParameter(ParameterTypes.A, Assumptions.get().dcas().cf().aDcas());
+        dcasSettings.addParameter(ParameterTypes.B, Assumptions.get().dcas().cf().bDcas());
+        dcasSettings.addParameter(ParameterTypes.B0, Assumptions.get().dcas().cf().b0Dcas());
+        dcasSettings.addParameter(AbstractIdm.DELTA, Assumptions.get().dcas().cf().deltaDcas());
         setDefaultParameter(dcasSettings, Dcas.X_NETWORK);
         setDefaultParameter(dcasSettings, Dcas.MAX_B_DCAS);
         setDefaultParameter(dcasSettings, Dcas.MIN_TTC_DCAS);
@@ -209,7 +209,7 @@ public final class ModelSetup
      */
     private static void fOverEstFix(final LmrsFactory<?> lmrsFactory, final StreamInterface stream)
     {
-        double fOverEst = Assumptions.get().fOverEst();
+        double fOverEst = Assumptions.get().scenario().fOverEst();
         if (fOverEst == 0.0)
         {
             lmrsFactory.addParameter(Fuller.OVER_EST, -1.0);

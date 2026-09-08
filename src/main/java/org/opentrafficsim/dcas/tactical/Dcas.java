@@ -91,31 +91,32 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
 
     /** Length over which DCAS is network and signs aware. */
     public static final ParameterTypeLength X_NETWORK = new ParameterTypeLength("xNetwork",
-            "Length over which DCAS is network aware", Assumptions.get().xNetwork(), NumericConstraint.POSITIVE);
+            "Length over which DCAS is network aware", Assumptions.get().dcas().xNetwork(), NumericConstraint.POSITIVE);
 
     /** Maximum deceleration DCAS may perform. */
     public static final ParameterTypeAcceleration MAX_B_DCAS = new ParameterTypeAcceleration("maxBDcas",
-            "Maximum deceleration DCAS may perform", Assumptions.get().maxBDcas(), NumericConstraint.POSITIVE);
+            "Maximum deceleration DCAS may perform", Assumptions.get().dcas().cf().maxBDcas(), NumericConstraint.POSITIVE);
 
     /** Maximum deceleration DCAS may perform. */
-    public static final ParameterTypeDuration MIN_TTC_DCAS = new ParameterTypeDuration("minTtcDcas",
-            "Minimum Time To Collision for lane change", Assumptions.get().minTtcDcas(), NumericConstraint.POSITIVE);
+    public static final ParameterTypeDuration MIN_TTC_DCAS =
+            new ParameterTypeDuration("minTtcDcas", "Minimum Time To Collision for lane change",
+                    Assumptions.get().dcas().lc().minTtcDcas(), NumericConstraint.POSITIVE);
 
     /** Minimum time headway for lane change. */
     public static final ParameterTypeDuration MIN_T_DCAS = new ParameterTypeDuration("minTDcas",
-            "Minimum time headway for lane change", Assumptions.get().minTDcas(), NumericConstraint.POSITIVE);
+            "Minimum time headway for lane change", Assumptions.get().dcas().lc().minTDcas(), NumericConstraint.POSITIVE);
 
     /** Time step of DCAS system. */
     public static final ParameterTypeDuration DT_DCAS = new ParameterTypeDuration("dtDcas", "Time step of DCAS system",
-            Assumptions.get().dtDcas(), NumericConstraint.POSITIVE);
+            Assumptions.get().dcas().dtDcas(), NumericConstraint.POSITIVE);
 
     /** System is lane change able. */
     public static final ParameterTypeBoolean LC_DCAS =
-            new ParameterTypeBoolean("lcDcas", "System is lane change able", Assumptions.get().lcDcas());
+            new ParameterTypeBoolean("lcDcas", "System is lane change able", Assumptions.get().dcas().lc().lcDcas());
 
     /** System is shoulder Minimum Risk Maneuver able. */
     public static final ParameterTypeBoolean SHOULDER_DCAS = new ParameterTypeBoolean("shoulderDcas",
-            "System is shoulder Minimum Risk Maneuver able", Assumptions.get().shoulderDcas());
+            "System is shoulder Minimum Risk Maneuver able", Assumptions.get().dcas().lc().shoulderDcas());
 
     /** Settings for DCAS. */
     private final Parameters settings;

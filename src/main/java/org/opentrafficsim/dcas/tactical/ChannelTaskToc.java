@@ -21,7 +21,7 @@ public class ChannelTaskToc implements ChannelTask
 
     /** Level of task demand during Transition Of Control. */
     public static final ParameterTypeDouble TD_TOC = new ParameterTypeDouble("TD_TOC",
-            "Task demand during transition of control.", Assumptions.get().tdToc(), DualBound.UNITINTERVAL);
+            "Task demand during transition of control.", Assumptions.get().human().tdToc(), DualBound.UNITINTERVAL);
 
     /** Cached task demand. */
     private double td;
