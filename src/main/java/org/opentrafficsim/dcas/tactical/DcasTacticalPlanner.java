@@ -9,12 +9,15 @@ import org.djunits.value.vdouble.scalar.Duration;
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
 import org.djutils.draw.point.DirectedPoint2d;
+import org.djutils.exceptions.Try;
 import org.opentrafficsim.base.DistancedObject;
 import org.opentrafficsim.base.OtsRuntimeException;
 import org.opentrafficsim.base.logger.Logger;
 import org.opentrafficsim.base.parameters.ParameterException;
+import org.opentrafficsim.base.parameters.ParameterSet;
 import org.opentrafficsim.base.parameters.ParameterTypeDuration;
 import org.opentrafficsim.base.parameters.ParameterTypes;
+import org.opentrafficsim.base.parameters.Parameters;
 import org.opentrafficsim.base.parameters.constraint.NumericConstraint;
 import org.opentrafficsim.core.gtu.GtuException;
 import org.opentrafficsim.core.gtu.TurnIndicatorStatus;
@@ -22,30 +25,33 @@ import org.opentrafficsim.core.gtu.plan.operational.OperationalPlan;
 import org.opentrafficsim.core.gtu.plan.operational.OperationalPlanException;
 import org.opentrafficsim.core.network.LateralDirectionality;
 import org.opentrafficsim.core.network.NetworkException;
+import org.opentrafficsim.core.parameters.ParameterFactoryByType;
 import org.opentrafficsim.core.perception.Historical;
 import org.opentrafficsim.core.perception.HistoricalValue;
+import org.opentrafficsim.dcas.scenario.tools.Assumptions;
 import org.opentrafficsim.dcas.tactical.DcasUserInterface.DcasState;
 import org.opentrafficsim.road.gtu.LaneBasedGtu;
 import org.opentrafficsim.road.gtu.operational.LaneOperationalPlanBuilder;
 import org.opentrafficsim.road.gtu.operational.SimpleOperationalPlan;
 import org.opentrafficsim.road.gtu.perception.LanePerception;
+import org.opentrafficsim.road.gtu.perception.RelativeLane;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelFuller;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelTask;
+import org.opentrafficsim.road.gtu.perception.structure.LaneRecord;
 import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
 import org.opentrafficsim.road.gtu.tactical.following.CarFollowingModel;
 import org.opentrafficsim.road.gtu.tactical.lmrs.AbstractIncentivesTacticalPlanner;
+import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory;
+import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.TacticalPlannerProvider;
 import org.opentrafficsim.road.gtu.tactical.util.DeadEndUtil;
 import org.opentrafficsim.road.gtu.tactical.util.LaneChangeNotAllowedUtil;
-import org.opentrafficsim.road.gtu.tactical.util.lmrs.Cooperation;
-import org.opentrafficsim.road.gtu.tactical.util.lmrs.GapAcceptance;
 import org.opentrafficsim.road.gtu.tactical.util.lmrs.LmrsData;
 import org.opentrafficsim.road.gtu.tactical.util.lmrs.LmrsParameters;
 import org.opentrafficsim.road.gtu.tactical.util.lmrs.LmrsUtil;
-import org.opentrafficsim.road.gtu.tactical.util.lmrs.Synchronization;
-import org.opentrafficsim.road.gtu.tactical.util.lmrs.Tailgating;
+import org.opentrafficsim.road.network.Shoulder;
 
 /**
- * DcasTacticalPlanner.java.
+ * Tactical planner for hybrid human-DCAS control
  * <p>
  * Copyright (c) 2026-2026 Delft University of Technology, PO Box 5, 2600 AA, Delft, the Netherlands. All rights reserved.<br>
  * BSD-style license. See <a href="https://opentrafficsim.org/docs/license.html">OpenTrafficSim License</a>.
@@ -57,7 +63,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
 
     /** Stimulus time for driver to change lane, increase acceleration, or reduce TOC TD. */
     public static final ParameterTypeDuration TAU_STIM = new ParameterTypeDuration("tauStim",
-            "Stimulus time for driver to change lane, increase acceleration, or reduce TOC TD", Duration.ofSI(5.0),
+            "Stimulus time for driver to change lane, increase acceleration, or reduce TOC TD", Assumptions.get().tauStim(),
             NumericConstraint.POSITIVE);
 
     /** Deviation object in case of no desired deviation. */
@@ -108,20 +114,18 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
      * @param carFollowingModel car-following model
      * @param gtu GTU
      * @param lanePerception perception
-     * @param synchronization type of synchronization
-     * @param cooperation type of cooperation
-     * @param gapAcceptance gap-acceptance
-     * @param tailgating tailgating
+     * @param lmrsData LMRS data with perception, type of synchronization, type of cooperation, and gap-acceptance
+     * @param dcasSettings DCAS settings
      */
     public DcasTacticalPlanner(final CarFollowingModel carFollowingModel, final LaneBasedGtu gtu,
-            final LanePerception lanePerception, final Synchronization synchronization, final Cooperation cooperation,
-            final GapAcceptance gapAcceptance, final Tailgating tailgating)
+            final LanePerception lanePerception, final LmrsData lmrsData, final Parameters dcasSettings)
     {
         super(carFollowingModel, gtu, lanePerception);
-        this.lmrsData = new LmrsData(synchronization, cooperation, gapAcceptance, tailgating);
+        this.lmrsData = lmrsData;
         this.toc = new HistoricalValue<Boolean>(gtu.getSimulator().getReplication().getHistoryManager(gtu.getSimulator()), this,
                 false);
-        this.dcas = new Dcas((b) -> this.toc.set(b), () -> this.lcRequest, () -> this.throttleRequest, () -> this.brakeRequest);
+        this.dcas = new Dcas(dcasSettings, (b) -> this.toc.set(b), () -> this.lcRequest, () -> this.throttleRequest,
+                () -> this.brakeRequest);
 
         // add components that cannot be added through LmrsFactory
         lanePerception.addPerceptionCategory(new PerceptionCategoryToc(lanePerception));
@@ -279,6 +283,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
     {
         this.dcas.setUserSpeed(context.getDesiredSpeed());
         SimpleOperationalPlan simplePlan = LmrsUtil.determinePlan(context, this.lmrsData, this);
+        simplePlan.minimizeAcceleration(getAcceleration(context, RelativeLane.CURRENT, Length.ZERO));
         setLcRequest(context, startTime);
         setAccelerationRequest(context, startTime);
 
@@ -299,10 +304,10 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
      */
     private static boolean canEnableDcas(final TacticalContextEgo context) throws ParameterException
     {
-        double dSync = context.getParameters().getParameter(LmrsParameters.DSYNC);
+        double dFree = context.getParameters().getParameter(LmrsParameters.DFREE);
         double dLeft = context.getParameters().getParameter(LmrsParameters.DLEFT);
         double dRight = context.getParameters().getParameter(LmrsParameters.DRIGHT);
-        return dLeft < dSync && dRight < dSync && context.getAcceleration().ge0();
+        return dLeft < dFree && dRight < dFree && context.getAcceleration().ge0();
     }
 
     /**
@@ -325,7 +330,16 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
         if (d >= context.getParameters().getParameter(LmrsParameters.DSYNC) || (this.startLcStimulus != null
                 && startTime.minus(this.startLcStimulus).ge(context.getParameters().getParameter(TAU_STIM))))
         {
-            this.lcRequest = dLeft >= dRight ? LateralDirectionality.LEFT : LateralDirectionality.RIGHT;
+            LaneRecord record = context.getPerception().getLaneStructure()
+                    .getRootRecord(dLeft >= dRight ? RelativeLane.LEFT : RelativeLane.RIGHT);
+            if (record == null || record.getLane() instanceof Shoulder)
+            {
+                this.lcRequest = LateralDirectionality.NONE;
+            }
+            else
+            {
+                this.lcRequest = dLeft >= dRight ? LateralDirectionality.LEFT : LateralDirectionality.RIGHT;
+            }
         }
         else
         {
@@ -412,6 +426,22 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
     public DcasState getState()
     {
         return this.dcas.getState();
+    }
+
+    /**
+     * Returns a factory as can be used in {@link LmrsFactory}, extending the default LMRS setup with DCAS settings setup.
+     * @param dcasSettingsFactory DCAS settings factory
+     * @return factory as can be used in {@link LmrsFactory}
+     */
+    public static TacticalPlannerProvider<AbstractIncentivesTacticalPlanner> factory(
+            final ParameterFactoryByType dcasSettingsFactory)
+    {
+        return (cf, gtu, perc, sync, coop, gap, tail) ->
+        {
+            ParameterSet settings = new ParameterSet();
+            Try.execute(() -> dcasSettingsFactory.setValues(settings, gtu.getType()), "Unable to set DCAS setting.");
+            return new DcasTacticalPlanner(cf, gtu, perc, new LmrsData(sync, coop, gap, tail), settings);
+        };
     }
 
 }

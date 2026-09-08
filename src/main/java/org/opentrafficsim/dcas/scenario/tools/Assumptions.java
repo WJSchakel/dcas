@@ -22,19 +22,30 @@ import org.djunits.value.vdouble.scalar.Speed;
  * @param bDcas DCAS IDM car-following deceleration parameter
  * @param b0Dcas DCAS IDM car-following adjustment deceleration parameter
  * @param deltaDcas DCAS IDM car-following delta parameter
+ * @param xNetwork DCAS extent over which it knows the network
  * @param maxBDcas DCAS maximum deceleration
  * @param minTtcDcas DCAS LC minimum TTC
  * @param minTDcas DCAS LC minimum time headway
- * @param bStopDcas deceleration for in-lane minimum risk maneuver
  * @param dtDcas DCAS system time step
+ * @param fOverEst fraction of drivers that over-estimates stimuli (safer for speed difference, less safe for distance)
+ * @param lcDcas DCAS is able to change lane
+ * @param shoulderDcas DCAS is able to perform MRM to the shoulder
+ * @param infraLc distance remaining per lane change where DCAS starts to change lane
+ * @param infraToc distance remaining per lane change where DCAS starts to request a Transition Of Control
+ * @param infraMrm distance remaining per lane change where DCAS starts to perform s Minimum Risk Maneuver
+ * @param tdToc task-demand during Transition Of Control request
+ * @param tauStim duration over which a stimulus has to be persistent for action
+ * @param tauMin minimum perception delay (default 0.32s)
+ * @param tauMax maximum perception delay (default 1.19s)
  * @param vGainDcas vGain parameter value for drivers with DCAS activated
  * @param socioDcas socio parameter value for drivers with DCAS activated
  * @param tocNonResponseRate DCAS driver transition-of-control non-response rate
  */
 public record Assumptions(double penetrationLow, double penetrationHigh, double activationRate, Length s0Dcas, Duration TDcas,
-        Acceleration aDcas, Acceleration bDcas, Acceleration b0Dcas, double deltaDcas, Acceleration maxBDcas,
-        Duration minTtcDcas, Duration minTDcas, Acceleration bStopDcas, Duration dtDcas, Speed vGainDcas, double socioDcas,
-        double tocNonResponseRate)
+        Acceleration aDcas, Acceleration bDcas, Acceleration b0Dcas, double deltaDcas, Length xNetwork, Acceleration maxBDcas,
+        Duration minTtcDcas, Duration minTDcas, Duration dtDcas, double fOverEst, boolean lcDcas, boolean shoulderDcas,
+        Length infraLc, Length infraToc, Length infraMrm, double tdToc, Duration tauStim, Duration tauMin, Duration tauMax,
+        Speed vGainDcas, double socioDcas, double tocNonResponseRate)
 {
 
     /** Singleton instance returned by {@code get()}. */

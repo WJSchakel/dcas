@@ -3,5 +3,7 @@
   <ots:GtuType Id="VEHICLE"/>
   <ots:GtuType Id="CAR" Parent="VEHICLE"/>
   <ots:GtuType Id="DCAS" Parent="CAR"/>
+  <ots:GtuType Id="DCAS1" Parent="DCAS"/>
+  <ots:GtuType Id="DCAS2" Parent="DCAS"/>
   <ots:GtuType Id="TRUCK" Parent="VEHICLE"/>
 </ots:GtuTypes>

@@ -27,7 +27,10 @@ public class DcasStateColorer implements LegendColorer<Gtu>
     static final Color ON = Color.GREEN.darker();
 
     /** Transition Of Control request. */
-    static final Color TOC = Color.YELLOW;
+    static final Color SYNC = Color.YELLOW;
+
+    /** Transition Of Control request. */
+    static final Color TOC = Color.ORANGE;
 
     /** Minimum Risk Maneuver. */
     static final Color MRM = Color.RED;
@@ -43,6 +46,7 @@ public class DcasStateColorer implements LegendColorer<Gtu>
         LEGEND = new ArrayList<>();
         LEGEND.add(new LegendEntry(OFF, "off", "off"));
         LEGEND.add(new LegendEntry(ON, "on", "on, normal operations"));
+        LEGEND.add(new LegendEntry(SYNC, "synchronizing", "synchronizing"));
         LEGEND.add(new LegendEntry(TOC, "transition of control", "transition of control"));
         LEGEND.add(new LegendEntry(MRM, "minimum risk maneuver", "minimum risk maneuver"));
         LEGEND.add(new LegendEntry(NA, "N/A", "N/A"));
@@ -53,19 +57,15 @@ public class DcasStateColorer implements LegendColorer<Gtu>
     {
         if (object.getTacticalPlanner() instanceof DcasTacticalPlanner planner)
         {
-            switch (planner.getState())
+            return switch (planner.getState())
             {
-                case OFF:
-                    return OFF;
-                case ON:
-                    return ON;
-                case TOC:
-                    return TOC;
-                case MRM:
-                    return MRM;
-                default:
-                    return NA;
-            }
+                case OFF -> OFF;
+                case ON -> ON;
+                case SYNC -> SYNC;
+                case TOC -> TOC;
+                case MRM -> MRM;
+                default -> NA;
+            };
         }
         return NA;
     }

@@ -1,0 +1,115 @@
+package org.opentrafficsim.dcas.tactical;
+
+import java.util.SortedSet;
+
+import org.djutils.immutablecollections.ImmutableLinkedHashMap;
+import org.opentrafficsim.base.parameters.ParameterException;
+import org.opentrafficsim.base.parameters.ParameterTypes;
+import org.opentrafficsim.core.gtu.Stateless;
+import org.opentrafficsim.core.gtu.plan.operational.OperationalPlanException;
+import org.opentrafficsim.core.network.LateralDirectionality;
+import org.opentrafficsim.road.gtu.perception.RelativeLane;
+import org.opentrafficsim.road.gtu.perception.categories.InfrastructurePerception;
+import org.opentrafficsim.road.gtu.perception.structure.LaneRecord;
+import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
+import org.opentrafficsim.road.gtu.tactical.lmrs.IncentiveRoute;
+import org.opentrafficsim.road.gtu.tactical.lmrs.IncentiveStayOnSlowLanes;
+import org.opentrafficsim.road.gtu.tactical.util.lmrs.Desire;
+import org.opentrafficsim.road.gtu.tactical.util.lmrs.LmrsParameters;
+import org.opentrafficsim.road.gtu.tactical.util.lmrs.VoluntaryIncentive;
+import org.opentrafficsim.road.network.Shoulder;
+
+/**
+ * FIX: This is a copy of a newer version of {@link IncentiveStayOnSlowLanes} that incorporates a fix.
+ * <p>
+ * Incentive for trucks to remain on the two slowest lanes, unless the route requires otherwise.
+ * <p>
+ * Copyright (c) 2013-2026 Delft University of Technology, PO Box 5, 2600 AA, Delft, the Netherlands. All rights reserved. <br>
+ * BSD-style license. See <a href="https://opentrafficsim.org/docs/license.html">OpenTrafficSim License</a>.
+ * </p>
+ * @author Alexander Verbraeck
+ * @author Peter Knoppers
+ * @author Wouter Schakel
+ * @see <a href="https://github.com/averbraeck/opentrafficsim/issues/326">OTS Issue 326</a>
+ */
+public final class IncentiveStayOnSlowLanesFix implements VoluntaryIncentive, Stateless<IncentiveStayOnSlowLanesFix>
+{
+
+    /** Singleton instance. */
+    public static final IncentiveStayOnSlowLanesFix SINGLETON = new IncentiveStayOnSlowLanesFix();
+
+    @Override
+    public IncentiveStayOnSlowLanesFix get()
+    {
+        return SINGLETON;
+    }
+
+    /**
+     * Constructor.
+     */
+    private IncentiveStayOnSlowLanesFix()
+    {
+        //
+    }
+
+    @Override
+    public Desire determineDesire(final TacticalContextEgo context, final Desire mandatoryDesire,
+            final ImmutableLinkedHashMap<Class<? extends VoluntaryIncentive>, Desire> voluntaryDesire)
+            throws ParameterException, OperationalPlanException
+    {
+        InfrastructurePerception infra = context.getPerception().getPerceptionCategory(InfrastructurePerception.class);
+        // start at fastest lane
+        SortedSet<RelativeLane> rootCrossSection = context.getPerception().getLaneStructure().getRootCrossSection();
+        RelativeLane lane = rootCrossSection.first();
+        // move to slow lane until we find 'the slowest lane', defined by the last lane where the urgency does not increase
+        double curUrgency = getDesireToLeave(context, lane);
+        double slowLaneUrgency;
+        RelativeLane slow = lane.getRight();
+        while (rootCrossSection.contains(slow) && (slowLaneUrgency = getDesireToLeave(context, slow)) <= curUrgency)
+        {
+            curUrgency = slowLaneUrgency;
+            lane = slow;
+            slow = slow.getRight();
+        }
+        boolean legalLeft = infra.getLegalLaneChangePossibility(RelativeLane.CURRENT, LateralDirectionality.LEFT).ge0();
+        if (lane.getLateralDirectionality().isRight())
+        {
+            if (lane.getNumLanes() > 1)
+            {
+                // must change right
+                boolean inCongestion = context.getSpeed().lt(context.getParameters().getParameter(ParameterTypes.VCONG));
+                return new Desire(legalLeft ? -1.0 : 0.0,
+                        context.getParameters().getParameter(inCongestion ? LmrsParameters.DFREE : LmrsParameters.DSYNC));
+            }
+            // must not change left
+            return new Desire(legalLeft ? -1.0 : 0.0, 0.0);
+        }
+        return new Desire(0.0, 0.0);
+    }
+
+    /**
+     * Fix to return 1.0 on shoulders.
+     * @param context tactical context
+     * @param lane lane
+     * @return 1.0 on shoulder or result of {@code IncentiveRoute.getDesireToLeave()}
+     * @throws ParameterException when parameter is not available
+     * @throws OperationalPlanException when infra perception is not available
+     */
+    private static double getDesireToLeave(final TacticalContextEgo context, final RelativeLane lane)
+            throws ParameterException, OperationalPlanException
+    {
+        LaneRecord laneRecord = context.getPerception().getLaneStructure().getRootRecord(lane);
+        if (laneRecord.getLane() instanceof Shoulder)
+        {
+            return 1.0;
+        }
+        return IncentiveRoute.getDesireToLeave(context, lane);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "IncentiveStayOnSlowLanesFix";
+    }
+
+}

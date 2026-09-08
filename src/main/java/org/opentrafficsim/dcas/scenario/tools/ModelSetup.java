@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.djunits.unit.Unit;
@@ -27,6 +28,7 @@ import org.opentrafficsim.base.OtsRuntimeException;
 import org.opentrafficsim.base.logger.Logger;
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterType;
+import org.opentrafficsim.base.parameters.ParameterTypes;
 import org.opentrafficsim.core.definitions.Definitions;
 import org.opentrafficsim.core.distributions.ConstantSupplier;
 import org.opentrafficsim.core.gtu.Gtu;
@@ -39,16 +41,25 @@ import org.opentrafficsim.dcas.tactical.ChannelTaskToc;
 import org.opentrafficsim.dcas.tactical.Dcas;
 import org.opentrafficsim.dcas.tactical.DcasFunctionInfrastructure;
 import org.opentrafficsim.dcas.tactical.DcasTacticalPlanner;
+import org.opentrafficsim.dcas.tactical.IncentiveKeepFix;
+import org.opentrafficsim.dcas.tactical.IncentiveStayOnSlowLanesFix;
 import org.opentrafficsim.road.gtu.generator.GeneratorPositions.LaneBias;
 import org.opentrafficsim.road.gtu.generator.GeneratorPositions.LaneBiases;
 import org.opentrafficsim.road.gtu.generator.characteristics.DefaultLaneBasedGtuCharacteristicsGeneratorOd;
 import org.opentrafficsim.road.gtu.generator.characteristics.DefaultLaneBasedGtuCharacteristicsGeneratorOd.Factory;
 import org.opentrafficsim.road.gtu.generator.characteristics.LaneBasedGtuTemplate;
+import org.opentrafficsim.road.gtu.perception.mental.Fuller;
+import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelFuller;
 import org.opentrafficsim.road.gtu.strategical.LaneBasedStrategicalRoutePlannerFactory;
+import org.opentrafficsim.road.gtu.tactical.following.AbstractIdm;
+import org.opentrafficsim.road.gtu.tactical.lmrs.AbstractIncentivesTacticalPlanner;
 import org.opentrafficsim.road.gtu.tactical.lmrs.Lmrs;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.FullerImplementation;
+import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.IdmPlusMultiFunction;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.Setting;
+import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.TacticalPlannerProvider;
+import org.opentrafficsim.road.gtu.tactical.util.lmrs.VoluntaryIncentive;
 import org.opentrafficsim.road.network.RoadNetwork;
 import org.opentrafficsim.road.network.factory.xml.XmlParserException;
 import org.opentrafficsim.road.network.factory.xml.parser.DefinitionsParser;
@@ -64,7 +75,9 @@ import org.opentrafficsim.xml.generated.GtuTemplates;
 import org.opentrafficsim.xml.generated.Ots;
 
 import nl.tudelft.simulation.dsol.experiment.StreamInformation;
+import nl.tudelft.simulation.jstats.distributions.DistEmpiricalDiscreteDouble;
 import nl.tudelft.simulation.jstats.distributions.DistNormalTrunc;
+import nl.tudelft.simulation.jstats.distributions.empirical.DiscreteEmpiricalDistribution;
 import nl.tudelft.simulation.jstats.streams.StreamInterface;
 
 /**
@@ -97,37 +110,132 @@ public final class ModelSetup
      * @param xmlParser XML parser
      * @param definitions parsed definitions
      * @param odMatrix OD matrix
+     * @param scenarioDcasSettings logic that sets scenario specific DCAS settings
+     * @return parameter factory for custom scenario parameters
      * @throws ParameterException when a parameter is wrongly set
      */
-    public static void applyOd(final RoadNetwork network, final XmlParser xmlParser, final Definitions definitions,
-            final OdMatrix odMatrix) throws ParameterException
+    public static ParameterFactoryByType applyOd(final RoadNetwork network, final XmlParser xmlParser,
+            final Definitions definitions, final OdMatrix odMatrix, final Consumer<ParameterFactoryByType> scenarioDcasSettings)
+            throws ParameterException
     {
         ImmutableMap<String, GtuType> gtuTypes = definitions.getAll(GtuType.class);
         GtuType car = gtuTypes.get("CAR");
         GtuType dcas = gtuTypes.get("DCAS");
+        GtuType dcas1 = gtuTypes.get("DCAS1");
+        GtuType dcas2 = gtuTypes.get("DCAS2");
         GtuType truck = gtuTypes.get("TRUCK");
 
         DetectorType detectorType = definitions.get(DetectorType.class, "VEHICLE").get();
 
+        ParameterFactoryByType dcasSettingsFactory = getDcasSettingsFactory(scenarioDcasSettings);
+        TacticalPlannerProvider<AbstractIncentivesTacticalPlanner> dcasTacticalPlannerFactory =
+                DcasTacticalPlanner.factory(dcasSettingsFactory);
+
         StreamInformation streams = network.getSimulator().getModel().getStreamInformation();
         StreamInterface stream = streams.getStream("generation");
-        LmrsFactory<?> lmrsFactory =
-                new LmrsFactory<>(List.of(car, dcas, truck), List.of(Lmrs::new, DcasTacticalPlanner::new, Lmrs::new))
-                        .setStream(stream).set(Setting.ACCELERATION_TRAFFIC_LIGHTS, true)
-                        .set(Setting.ACCELERATION_SPEED_LIMIT_TRANSITION, true)
-                        .set(Setting.FULLER_IMPLEMENTATION, FullerImplementation.ATTENTION_MATRIX);
+        Set<Supplier<VoluntaryIncentive>> setTruck =
+                Set.of(() -> IncentiveKeepFix.SINGLETON, () -> IncentiveStayOnSlowLanesFix.SINGLETON);
+        Set<Supplier<VoluntaryIncentive>> setCar = Set.of(() -> IncentiveKeepFix.SINGLETON);
+        LmrsFactory<AbstractIncentivesTacticalPlanner> lmrsFactory = new LmrsFactory<>(List.of(car, dcas1, dcas2, truck),
+                List.of(Lmrs::new, dcasTacticalPlannerFactory, dcasTacticalPlannerFactory, Lmrs::new))
+                        .set(Setting.CAR_FOLLOWING_MODEL, IdmPlusMultiFunction.SINGLETON).setStream(stream)
+                        .set(Setting.ACCELERATION_TRAFFIC_LIGHTS, true).set(Setting.ACCELERATION_SPEED_LIMIT_TRANSITION, true)
+                        .set(Setting.FULLER_IMPLEMENTATION, FullerImplementation.ATTENTION_MATRIX)
+                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, car)
+                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas1)
+                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas2)
+                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setTruck, truck).set(Setting.INCENTIVE_KEEP, false);
+        // .set(Setting.FRACTION_OVERESTIMATION, Assumptions.get().fOverEst()); Bug: gets overwritten by default
+        fOverEstFix(lmrsFactory, stream); // Solution: create custom distributions
 
-        // DCAS parameters
+        // DCAS behavioral human parameters
         setDefaultParameter(lmrsFactory, dcas, ChannelTaskToc.TD_TOC);
-        setDefaultParameter(lmrsFactory, dcas, Dcas.X_NETWORK); // other parameters in Dcas are only used internally
-        setDefaultParameter(lmrsFactory, dcas, DcasFunctionInfrastructure.X_LC);
-        setDefaultParameter(lmrsFactory, dcas, DcasFunctionInfrastructure.X_TOC);
-        setDefaultParameter(lmrsFactory, dcas, DcasFunctionInfrastructure.X_MRM);
         setDefaultParameter(lmrsFactory, dcas, DcasTacticalPlanner.TAU_STIM);
+
+        // regular human parameters
+        lmrsFactory.addParameter(ChannelFuller.TAU_MIN, Assumptions.get().tauMin());
+        lmrsFactory.addParameter(ChannelFuller.TAU_MAX, Assumptions.get().tauMax());
+        lmrsFactory.addParameter(truck, ParameterTypes.A, Acceleration.ofSI(0.8));
 
         OdOptions odOptions = new OdOptions();
         applyToOdOptions(xmlParser, definitions, streams, odOptions, lmrsFactory);
         OdApplier.applyOd(network, odMatrix, odOptions, detectorType);
+
+        return lmrsFactory;
+    }
+
+    /**
+     * Returns DCAS settings factory.
+     * @param scenarioDcasSettings scenario specific DCAS settings
+     * @return DCAS settings factory
+     * @throws ParameterException when the set value does not comply with the type
+     */
+    private static ParameterFactoryByType getDcasSettingsFactory(final Consumer<ParameterFactoryByType> scenarioDcasSettings)
+            throws ParameterException
+    {
+        /*
+         * Note on B values: There is the regular B from the IDM, applied in car-following, and as threshold for
+         * synchronization. The value of B0 applies as a deceleration limit in the free acceleration term when DCAS is faster
+         * than the current target speed. This value is also used for stopping during an Minimum Risk Maneuver. Finally there is
+         * B_MAX, which is the maximum deceleration the system will allow. If the calculated deceleration is stronger, it will
+         * be limited and a Transition Of Control request follows.
+         */
+        ParameterFactoryByType dcasSettings = new ParameterFactoryByType();
+
+        dcasSettings.addParameter(ParameterTypes.S0, Assumptions.get().s0Dcas());
+        dcasSettings.addParameter(ParameterTypes.T, Assumptions.get().TDcas());
+        dcasSettings.addParameter(ParameterTypes.A, Assumptions.get().aDcas());
+        dcasSettings.addParameter(ParameterTypes.B, Assumptions.get().bDcas());
+        dcasSettings.addParameter(ParameterTypes.B0, Assumptions.get().b0Dcas());
+        dcasSettings.addParameter(AbstractIdm.DELTA, Assumptions.get().deltaDcas());
+        setDefaultParameter(dcasSettings, Dcas.X_NETWORK);
+        setDefaultParameter(dcasSettings, Dcas.MAX_B_DCAS);
+        setDefaultParameter(dcasSettings, Dcas.MIN_TTC_DCAS);
+        setDefaultParameter(dcasSettings, Dcas.MIN_T_DCAS);
+        setDefaultParameter(dcasSettings, Dcas.DT_DCAS);
+        setDefaultParameter(dcasSettings, Dcas.LC_DCAS);
+        setDefaultParameter(dcasSettings, Dcas.SHOULDER_DCAS);
+        setDefaultParameter(dcasSettings, DcasFunctionInfrastructure.X_LC);
+        setDefaultParameter(dcasSettings, DcasFunctionInfrastructure.X_TOC);
+        setDefaultParameter(dcasSettings, DcasFunctionInfrastructure.X_MRM);
+
+        return dcasSettings;
+    }
+
+    /**
+     * Sets the right parameter distribution to adhere to fOverEst.
+     * @param lmrsFactory factory
+     * @param stream stream
+     */
+    private static void fOverEstFix(final LmrsFactory<?> lmrsFactory, final StreamInterface stream)
+    {
+        double fOverEst = Assumptions.get().fOverEst();
+        if (fOverEst == 0.0)
+        {
+            lmrsFactory.addParameter(Fuller.OVER_EST, -1.0);
+        }
+        else if (fOverEst == 1.0)
+        {
+            lmrsFactory.addParameter(Fuller.OVER_EST, 1.0);
+        }
+        else
+        {
+            lmrsFactory.addParameter(Fuller.OVER_EST, new DistEmpiricalDiscreteDouble(stream,
+                    new DiscreteEmpiricalDistribution(new Double[] {-1.0, 1.0}, new double[] {1.0 - fOverEst, 1.0})));
+        }
+    }
+
+    /**
+     * Sets default parameter in parameter factory.
+     * @param <T> type of parameter value
+     * @param parameterFactory parameter factory
+     * @param parameterType parameter type
+     * @throws ParameterException when the set value does not comply with the type
+     */
+    private static <T> void setDefaultParameter(final ParameterFactoryByType parameterFactory,
+            final ParameterType<T> parameterType) throws ParameterException
+    {
+        parameterFactory.addParameter(parameterType, parameterType.getDefaultValue());
     }
 
     /**
@@ -293,9 +401,9 @@ public final class ModelSetup
      * @return a typed continuous random distribution.
      * @throws XmlParserException in case of a parse error.
      */
-    public static <T extends DoubleScalarRel<U, T>, U extends Unit<U>> ContinuousDistDoubleScalar.Rel<T, U> parseContinuousDist(
-            final StreamInformation streams, final ConstantDistType distribution, final U unit, final Eval eval)
-            throws XmlParserException
+    private static <T extends DoubleScalarRel<U, T>,
+            U extends Unit<U>> ContinuousDistDoubleScalar.Rel<T, U> parseContinuousDist(final StreamInformation streams,
+                    final ConstantDistType distribution, final U unit, final Eval eval) throws XmlParserException
     {
         if (distribution.getNormalTrunc() != null)
         {

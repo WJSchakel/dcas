@@ -3,6 +3,7 @@ package org.opentrafficsim.dcas.tactical;
 import java.util.function.BiFunction;
 
 import org.djunits.value.vdouble.scalar.Acceleration;
+import org.opentrafficsim.road.gtu.perception.RelativeLane;
 import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
 
 /**
@@ -20,8 +21,8 @@ public class DcasFunctionCarFollowing implements BiFunction<TacticalContextEgo, 
     public DcasFunctionResult apply(final TacticalContextEgo context, final DcasSystemInterface dcas)
     {
 
-        Acceleration acceleration = dcas.getCarFollowingAcceleration(context);
-        Acceleration maxB = dcas.getMaximumDeceleration().neg();
+        Acceleration acceleration = dcas.getCarFollowingAcceleration(context, RelativeLane.CURRENT);
+        Acceleration maxB = dcas.getSetting(Dcas.MAX_B_DCAS).neg();
 
         if (acceleration.lt(maxB))
         {

@@ -8,7 +8,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.djunits.value.vdouble.scalar.Acceleration;
-import org.djunits.value.vdouble.scalar.Duration;
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
 import org.djutils.exceptions.Throw;
@@ -16,13 +15,13 @@ import org.djutils.exceptions.Try;
 import org.opentrafficsim.base.DistancedObject;
 import org.opentrafficsim.base.OtsRuntimeException;
 import org.opentrafficsim.base.parameters.ParameterException;
-import org.opentrafficsim.base.parameters.ParameterSet;
 import org.opentrafficsim.base.parameters.ParameterType;
 import org.opentrafficsim.base.parameters.ParameterTypeAcceleration;
 import org.opentrafficsim.base.parameters.ParameterTypeBoolean;
 import org.opentrafficsim.base.parameters.ParameterTypeDuration;
 import org.opentrafficsim.base.parameters.ParameterTypeLength;
 import org.opentrafficsim.base.parameters.ParameterTypes;
+import org.opentrafficsim.base.parameters.Parameters;
 import org.opentrafficsim.base.parameters.constraint.NumericConstraint;
 import org.opentrafficsim.core.gtu.TurnIndicatorStatus;
 import org.opentrafficsim.core.gtu.plan.operational.OperationalPlanException;
@@ -44,7 +43,6 @@ import org.opentrafficsim.road.gtu.perception.object.PerceivedObjectBase;
 import org.opentrafficsim.road.gtu.perception.structure.LaneRecord;
 import org.opentrafficsim.road.gtu.perception.structure.LaneStructure;
 import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
-import org.opentrafficsim.road.gtu.tactical.following.AbstractIdm;
 import org.opentrafficsim.road.gtu.tactical.following.CarFollowingModel;
 import org.opentrafficsim.road.gtu.tactical.following.DesiredHeadwayModel;
 import org.opentrafficsim.road.gtu.tactical.following.DesiredSpeedModel;
@@ -93,63 +91,34 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
 
     /** Length over which DCAS is network and signs aware. */
     public static final ParameterTypeLength X_NETWORK = new ParameterTypeLength("xNetwork",
-            "Length over which DCAS is network aware", Length.ofSI(200.0), NumericConstraint.POSITIVE);
+            "Length over which DCAS is network aware", Assumptions.get().xNetwork(), NumericConstraint.POSITIVE);
 
     /** Maximum deceleration DCAS may perform. */
     public static final ParameterTypeAcceleration MAX_B_DCAS = new ParameterTypeAcceleration("maxBDcas",
-            "Maximum deceleration DCAS may perform", Acceleration.ofSI(4.0), NumericConstraint.POSITIVE);
+            "Maximum deceleration DCAS may perform", Assumptions.get().maxBDcas(), NumericConstraint.POSITIVE);
 
     /** Maximum deceleration DCAS may perform. */
     public static final ParameterTypeDuration MIN_TTC_DCAS = new ParameterTypeDuration("minTtcDcas",
-            "Minimum Time To Collision for lane change", Duration.ofSI(10.0), NumericConstraint.POSITIVE);
+            "Minimum Time To Collision for lane change", Assumptions.get().minTtcDcas(), NumericConstraint.POSITIVE);
 
     /** Minimum time headway for lane change. */
     public static final ParameterTypeDuration MIN_T_DCAS = new ParameterTypeDuration("minTDcas",
-            "Minimum time headway for lane change", Duration.ofSI(0.5), NumericConstraint.POSITIVE);
-
-    /** Deceleration for Minimum Risk Maneuver stopping. */
-    public static final ParameterTypeAcceleration B_STOP = new ParameterTypeAcceleration("bStop",
-            "Deceleration for Minimum Risk Maneuver stopping", Acceleration.ofSI(1.0), NumericConstraint.POSITIVE);
+            "Minimum time headway for lane change", Assumptions.get().minTDcas(), NumericConstraint.POSITIVE);
 
     /** Time step of DCAS system. */
-    public static final ParameterTypeDuration DT_DCAS =
-            new ParameterTypeDuration("dtDcas", "Time step of DCAS system", Duration.ofSI(0.2), NumericConstraint.POSITIVE);
+    public static final ParameterTypeDuration DT_DCAS = new ParameterTypeDuration("dtDcas", "Time step of DCAS system",
+            Assumptions.get().dtDcas(), NumericConstraint.POSITIVE);
 
     /** System is lane change able. */
-    public static final ParameterTypeBoolean LC_DCAS = new ParameterTypeBoolean("lcDcas", "System is lane change able", true);
+    public static final ParameterTypeBoolean LC_DCAS =
+            new ParameterTypeBoolean("lcDcas", "System is lane change able", Assumptions.get().lcDcas());
 
     /** System is shoulder Minimum Risk Maneuver able. */
-    public static final ParameterTypeBoolean SHOULDER_DCAS =
-            new ParameterTypeBoolean("shoulderDcas", "System is shoulder Minimum Risk Maneuver able", true);
+    public static final ParameterTypeBoolean SHOULDER_DCAS = new ParameterTypeBoolean("shoulderDcas",
+            "System is shoulder Minimum Risk Maneuver able", Assumptions.get().shoulderDcas());
 
     /** Settings for DCAS. */
-    // Global for now, may become specific per GTU in the future.
-    // TODO: Both human behavior with DCAS and DCAS systems should be different for various GTU types
-    private static final ParameterSet DCAS_SETTINGS = new ParameterSet();
-
-    static
-    {
-        try
-        {
-            DCAS_SETTINGS.setParameter(ParameterTypes.S0, Assumptions.get().s0Dcas());
-            DCAS_SETTINGS.setParameter(ParameterTypes.T, Assumptions.get().TDcas());
-            DCAS_SETTINGS.setParameter(ParameterTypes.A, Assumptions.get().aDcas());
-            DCAS_SETTINGS.setParameter(ParameterTypes.B, Assumptions.get().bDcas());
-            DCAS_SETTINGS.setParameter(ParameterTypes.B0, Assumptions.get().b0Dcas());
-            DCAS_SETTINGS.setParameter(AbstractIdm.DELTA, Assumptions.get().deltaDcas());
-            DCAS_SETTINGS.setParameter(MAX_B_DCAS, Assumptions.get().maxBDcas());
-            DCAS_SETTINGS.setParameter(MIN_TTC_DCAS, Assumptions.get().minTtcDcas());
-            DCAS_SETTINGS.setParameter(MIN_T_DCAS, Assumptions.get().minTDcas());
-            DCAS_SETTINGS.setParameter(B_STOP, Assumptions.get().bStopDcas());
-            DCAS_SETTINGS.setParameter(DT_DCAS, Assumptions.get().dtDcas());
-            DCAS_SETTINGS.setParameter(LC_DCAS, LC_DCAS.getDefaultValue());
-            DCAS_SETTINGS.setParameter(SHOULDER_DCAS, SHOULDER_DCAS.getDefaultValue());
-        }
-        catch (ParameterException e)
-        {
-            throw new OtsRuntimeException("Unable to set parameter as DCAS car-following settings.", e);
-        }
-    }
+    private final Parameters settings;
 
     /** Enabled state of DCAS. */
     private boolean enabled = false;
@@ -185,19 +154,25 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
     /** Last operation was at Minimal Risk Maneuver priority. */
     private boolean minimalRiskManeuverState = false;
 
+    /** Last operation was at lane change priority, but the gap was not accepted. */
+    private boolean synchronizing = false;
+
     /**
      * Constructor.
+     * @param settings DCAS settings
      * @param transitionOfControl consumer that will be activated when DCAS requests transition of control
      * @param userLcRequest supplier of the latest user lane change request
      * @param userThrottleRequest supplier of the latest user throttle request, which may be {@code null}
      * @param userBrakeRequest supplier of the latest user brake request, which may be {@code null}
      */
-    public Dcas(final Consumer<Boolean> transitionOfControl, final Supplier<LateralDirectionality> userLcRequest,
-            final Supplier<Acceleration> userThrottleRequest, final Supplier<Acceleration> userBrakeRequest)
+    public Dcas(final Parameters settings, final Consumer<Boolean> transitionOfControl,
+            final Supplier<LateralDirectionality> userLcRequest, final Supplier<Acceleration> userThrottleRequest,
+            final Supplier<Acceleration> userBrakeRequest)
     {
+        this.settings = settings;
         // The desired headway and speed model for DCAS ignore the parameters from the GTU, and use local settings instead
         DesiredHeadwayModel sModel = (params, v) -> Length.ofSI(
-                DCAS_SETTINGS.getParameter(ParameterTypes.S0).si + DCAS_SETTINGS.getParameter(ParameterTypes.T).si * v.si);
+                this.settings.getParameter(ParameterTypes.S0).si + this.settings.getParameter(ParameterTypes.T).si * v.si);
         DesiredSpeedModel vModel = (params, vLims, vMax) -> Speed.min(vMax,
                 this.loweredSystemSpeed == null ? this.userSpeed : Speed.min(this.loweredSystemSpeed, this.userSpeed));
         this.carFollowingModel = new IdmPlus(sModel, vModel);
@@ -208,18 +183,6 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         this.functions.add(new DcasFunctionInfrastructure());
         this.functions.add(new DcasFunctionUserLcRequest(userLcRequest)); // might translate request in DcasFunctionResult
         this.functions.add(new DcasFunctionCarFollowing());
-    }
-
-    /**
-     * Set global DCAS setting.
-     * @param <T> value type
-     * @param parameter parameter type
-     * @param value value
-     * @throws ParameterException when the value does not comply to the bounds of the parameter type
-     */
-    public static <T> void setSetting(final ParameterType<T> parameter, final T value) throws ParameterException
-    {
-        DCAS_SETTINGS.setParameter(parameter, value);
     }
 
     @Override
@@ -261,23 +224,22 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
     }
 
     @Override
-    public Acceleration getMaximumDeceleration()
+    public <T> T getSetting(final ParameterType<T> setting)
     {
-        return Try.assign(() -> DCAS_SETTINGS.getParameter(MAX_B_DCAS), OtsRuntimeException.class, "Missing parameter %s",
-                MAX_B_DCAS.getId());
+        return Try.assign(() -> this.settings.getParameter(setting), OtsRuntimeException.class, "Missing setting %s",
+                setting.getId());
     }
 
     /**
-     * {@inheritDoc} This follows one leader based on exact information and using a local IDM+ with local parameters. This
-     * method can be used by one of the DCAS functions.
+     * {@inheritDoc} This follows one leader based on exact information and using a local IDM+ with local parameters.
      */
     @Override
-    public Acceleration getCarFollowingAcceleration(final TacticalContextEgo context)
+    public Acceleration getCarFollowingAcceleration(final TacticalContextEgo context, final RelativeLane lane)
     {
         try
         {
             PerceptionCollectable<PerceivedGtu, LaneBasedGtu> leaders =
-                    context.getPerception().getPerceptionCategory(NeighborsPerception.class).getLeaders(RelativeLane.CURRENT);
+                    context.getPerception().getPerceptionCategory(NeighborsPerception.class).getLeaders(lane);
             PerceptionIterableSet<PerceivedObject> leader;
             if (leaders.isEmpty())
             {
@@ -291,7 +253,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
                         new PerceivedObjectBase(rawLeader.object().getId(), ObjectType.GTU, Length.ONE, new Kinematics.Record(
                                 rawLeader.distance(), rawLeader.object().getSpeed(), Acceleration.ZERO, true, Overlap.AHEAD)));
             }
-            return this.carFollowingModel.followingAcceleration(DCAS_SETTINGS, context.getSpeed(), context.getSpeedLimits(),
+            return this.carFollowingModel.followingAcceleration(this.settings, context.getSpeed(), context.getSpeedLimits(),
                     context.getMaximumSpeed(), leader);
         }
         catch (OperationalPlanException | ParameterException ex)
@@ -330,7 +292,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         this.acceleration = stop.isPresent() ? Acceleration.min(stop.get(), this.acceleration) : this.acceleration;
         LateralDirectionality lc = determineLaneChange(context, dcasFunctionResult);
 
-        return new SimpleOperationalPlan(this.acceleration, DCAS_SETTINGS.getParameter(DT_DCAS), lc);
+        return new SimpleOperationalPlan(this.acceleration, this.settings.getParameter(DT_DCAS), lc);
     }
 
     @Override
@@ -347,6 +309,10 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         if (this.transitionOfControlState)
         {
             return DcasState.TOC;
+        }
+        if (this.synchronizing)
+        {
+            return DcasState.SYNC;
         }
         return DcasState.ON;
     }
@@ -367,11 +333,11 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
             // Slow down when DcasFunctionResult.STOP, when DcasFunctionResult.SHOULDER but system is not shoulder-able,
             // or when on shoulder
             if (dcasFunctionResult.equals(DcasFunctionResult.STOP)
-                    || (dcasFunctionResult.equals(DcasFunctionResult.SHOULDER) && !DCAS_SETTINGS.getParameter(SHOULDER_DCAS))
+                    || (dcasFunctionResult.equals(DcasFunctionResult.SHOULDER) && !this.settings.getParameter(SHOULDER_DCAS))
                     || context.getPerception().getLaneStructure().getRootRecord(RelativeLane.CURRENT)
                             .getLane() instanceof Shoulder)
             {
-                return Optional.of(DCAS_SETTINGS.getParameter(B_STOP).neg());
+                return Optional.of(this.settings.getParameter(ParameterTypes.B0).neg());
             }
         }
         return Optional.empty();
@@ -385,26 +351,34 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
      * @throws OperationalPlanException when a perception category is not available
      * @throws ParameterException when a parameter is not available
      */
-    private static LateralDirectionality determineLaneChange(final TacticalContextEgo context,
+    private LateralDirectionality determineLaneChange(final TacticalContextEgo context,
             final DcasFunctionResult dcasFunctionResult) throws OperationalPlanException, ParameterException
     {
-        LateralDirectionality lc = LateralDirectionality.NONE;
-        boolean lcAble = DCAS_SETTINGS.getParameter(LC_DCAS);
-        if (lcAble && DcasFunctionResult.CHANGE_LEFT.equals(dcasFunctionResult))
+        this.synchronizing = false;
+        boolean lcAble = this.settings.getParameter(LC_DCAS);
+        LateralDirectionality dir = switch (dcasFunctionResult)
         {
-            lc = acceptGap(context, LateralDirectionality.LEFT, true) ? LateralDirectionality.LEFT : LateralDirectionality.NONE;
-        }
-        else if (lcAble && DcasFunctionResult.CHANGE_RIGHT.equals(dcasFunctionResult))
+            case CHANGE_LEFT -> LateralDirectionality.LEFT;
+            case CHANGE_RIGHT -> LateralDirectionality.RIGHT;
+            default -> null;
+        };
+        if (lcAble && dir != null)
         {
-            lc = acceptGap(context, LateralDirectionality.RIGHT, true) ? LateralDirectionality.RIGHT
-                    : LateralDirectionality.NONE;
+            if (acceptGap(context, dir, true))
+            {
+                return dir;
+            }
+            // synchronize
+            this.synchronizing = true;
+            setSystemAcceleration(Acceleration.max(this.settings.getParameter(ParameterTypes.B).neg(),
+                    getCarFollowingAcceleration(context, dir.isLeft() ? RelativeLane.LEFT : RelativeLane.RIGHT)));
         }
-        else if (DCAS_SETTINGS.getParameter(SHOULDER_DCAS)
+        else if (this.settings.getParameter(SHOULDER_DCAS)
                 && dcasFunctionResult.ordinal() >= DcasFunctionResult.SHOULDER.ordinal())
         {
-            lc = determineShoulderLaneChange(context);
+            return determineShoulderLaneChange(context);
         }
-        return lc;
+        return LateralDirectionality.NONE;
     }
 
     /**
@@ -414,7 +388,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
      * @throws OperationalPlanException when a perception category is not available
      * @throws ParameterException when a parameter is not available
      */
-    private static LateralDirectionality determineShoulderLaneChange(final TacticalContextEgo context)
+    private LateralDirectionality determineShoulderLaneChange(final TacticalContextEgo context)
             throws OperationalPlanException, ParameterException
     {
         LaneStructure structure = context.getPerception().getLaneStructure();
@@ -437,7 +411,8 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
             {
                 return LateralDirectionality.LEFT;
             }
-            // 3) if adjacent to left-hand shoulder and gap not ok, do not move to right-hand normal lane, postpone
+            // 3) if adjacent to left-hand shoulder, and gap not ok, do not move to right-hand normal lane, postpone
+            // or: one lane between two shoulders that both have unacceptable gaps, also do not change lane
             return LateralDirectionality.NONE;
         }
         else if (rightInfra && acceptRightGap)
@@ -458,8 +433,8 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
      * @throws OperationalPlanException when a perception category is not available
      * @throws ParameterException when a parameter is not available
      */
-    private static boolean acceptGap(final TacticalContextEgo context, final LateralDirectionality direction,
-            final boolean legal) throws OperationalPlanException, ParameterException
+    private boolean acceptGap(final TacticalContextEgo context, final LateralDirectionality direction, final boolean legal)
+            throws OperationalPlanException, ParameterException
     {
         InfrastructurePerception infra = context.getPerception().getPerceptionCategory(InfrastructurePerception.class);
         boolean infraAllows = legal ? infra.getLegalLaneChangePossibility(RelativeLane.CURRENT, direction).gt0()
@@ -479,7 +454,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
      * @throws OperationalPlanException when a perception category is not available
      * @throws ParameterException when a parameter is not available
      */
-    private static boolean acceptGapVehicles(final TacticalContextEgo context, final LateralDirectionality direction)
+    private boolean acceptGapVehicles(final TacticalContextEgo context, final LateralDirectionality direction)
             throws OperationalPlanException, ParameterException
     {
         RelativeLane lane = new RelativeLane(direction, 1);
@@ -508,7 +483,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
      * @return whether the speed difference and distance to the first adjacent vehicle can be accepted for changing lane
      * @throws ParameterException when a parameter is not available
      */
-    private static boolean acceptGapVehicle(final TacticalContextEgo context,
+    private boolean acceptGapVehicle(final TacticalContextEgo context,
             final PerceptionCollectable<PerceivedGtu, LaneBasedGtu> adjacent, final BiFunction<Speed, Speed, Speed> speed,
             final BiFunction<Speed, Speed, Speed> dv) throws ParameterException
     {
@@ -516,9 +491,9 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         {
             DistancedObject<LaneBasedGtu> raw = adjacent.underlyingWithDistance().next();
             Speed deltaV = dv.apply(context.getSpeed(), raw.object().getSpeed());
-            return (deltaV.lt0() || raw.distance().divide(deltaV).ge(DCAS_SETTINGS.getParameter(MIN_TTC_DCAS))) && raw
+            return (deltaV.lt0() || raw.distance().divide(deltaV).ge(this.settings.getParameter(MIN_TTC_DCAS))) && raw
                     .distance()
-                    .gt(DCAS_SETTINGS.getParameter(MIN_T_DCAS).times(speed.apply(context.getSpeed(), raw.object().getSpeed())));
+                    .gt(this.settings.getParameter(MIN_T_DCAS).times(speed.apply(context.getSpeed(), raw.object().getSpeed())));
         }
         return true;
     }

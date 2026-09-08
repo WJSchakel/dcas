@@ -3,6 +3,7 @@ package org.opentrafficsim.dcas.tactical;
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterTypeDouble;
 import org.opentrafficsim.base.parameters.constraint.DualBound;
+import org.opentrafficsim.dcas.scenario.tools.Assumptions;
 import org.opentrafficsim.road.gtu.perception.LanePerception;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelTask;
 
@@ -19,8 +20,8 @@ public class ChannelTaskToc implements ChannelTask
 {
 
     /** Level of task demand during Transition Of Control. */
-    public static final ParameterTypeDouble TD_TOC =
-            new ParameterTypeDouble("TD_TOC", "Task demand during transition of control.", 0.5, DualBound.UNITINTERVAL);
+    public static final ParameterTypeDouble TD_TOC = new ParameterTypeDouble("TD_TOC",
+            "Task demand during transition of control.", Assumptions.get().tdToc(), DualBound.UNITINTERVAL);
 
     /** Cached task demand. */
     private double td;
@@ -50,8 +51,7 @@ public class ChannelTaskToc implements ChannelTask
         {
             // exponential decay
             double t = perception.getGtu().getSimulator().getSimulatorTime().si;
-            double ratio =
-                    (t - this.tLast) / perception.getGtu().getParameters().getParameter(DcasTacticalPlanner.TAU_STIM).si;
+            double ratio = (t - this.tLast) / perception.getGtu().getParameters().getParameter(DcasTacticalPlanner.TAU_STIM).si;
             this.tLast = t;
             this.td = ratio > 1.0 ? tdNew : ratio * tdNew + (1.0 - ratio) * this.td;
         }

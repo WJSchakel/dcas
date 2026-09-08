@@ -10,6 +10,7 @@ import org.opentrafficsim.base.parameters.ParameterTypeLength;
 import org.opentrafficsim.base.parameters.constraint.NumericConstraint;
 import org.opentrafficsim.core.gtu.plan.operational.OperationalPlanException;
 import org.opentrafficsim.core.network.LateralDirectionality;
+import org.opentrafficsim.dcas.scenario.tools.Assumptions;
 import org.opentrafficsim.road.gtu.perception.RelativeLane;
 import org.opentrafficsim.road.gtu.perception.categories.DirectInfrastructurePerception;
 import org.opentrafficsim.road.gtu.perception.categories.InfrastructurePerception;
@@ -31,38 +32,38 @@ public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo
     /** Remaining length per lane change below which DCAS attempts a lane change. */
     public static final ParameterTypeLength X_LC =
             new ParameterTypeLength("xLC", "Remaining length per lane change below which DCAS attempts a lane change",
-                    Length.ofSI(500.0), NumericConstraint.POSITIVE);
+                    Assumptions.get().infraLc(), NumericConstraint.POSITIVE);
 
     /** Remaining length per lane change below which DCAS requests Transition Of Control. */
     public static final ParameterTypeLength X_TOC =
             new ParameterTypeLength("xToc", "Remaining length per lane change below which DCAS requests Transition Of Control",
-                    Length.ofSI(300.0), NumericConstraint.POSITIVE);
+                    Assumptions.get().infraToc(), NumericConstraint.POSITIVE);
 
     /** Remaining length per lane change below which DCAS performs Minimum Risk Maneuver. */
     public static final ParameterTypeLength X_MRM =
             new ParameterTypeLength("xMrm", "Remaining length per lane change below which DCAS performs Minimum Risk Maneuver",
-                    Length.ofSI(50.0), NumericConstraint.POSITIVE);
+                    Assumptions.get().infraMrm(), NumericConstraint.POSITIVE);
 
     @Override
     public DcasFunctionResult apply(final TacticalContextEgo context, final DcasSystemInterface dcas)
     {
         try
         {
-            LaneChangeInfo lcInfo = getLaneChangeInfo(context);
+            LaneChangeInfo lcInfo = getLaneChangeInfo(context, dcas);
             if (lcInfo == null)
             {
                 return DcasFunctionResult.NONE;
             }
             Length distPerLc = lcInfo.remainingDistance().divide(lcInfo.numberOfLaneChanges());
-            if (distPerLc.lt(context.getParameters().getParameter(X_MRM)))
+            if (distPerLc.lt(dcas.getSetting(X_MRM)))
             {
                 return DcasFunctionResult.SHOULDER;
             }
-            if (distPerLc.lt(context.getParameters().getParameter(X_TOC)))
+            if (distPerLc.lt(dcas.getSetting(X_TOC)))
             {
                 return DcasFunctionResult.TRANSITION_OF_CONTROL;
             }
-            if (distPerLc.lt(context.getParameters().getParameter(X_LC)))
+            if (distPerLc.lt(dcas.getSetting(X_LC)))
             {
                 LateralDirectionality dir = lcInfo.lateralDirectionality();
                 switch (dir)
@@ -91,11 +92,12 @@ public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo
     /**
      * Returns most critical lane change information, or {@code null} when none within range.
      * @param context tactical context
+     * @param dcas DCAS
      * @return most critical lane change information, or {@code null} when none within range
      * @throws OperationalPlanException when a perception category is not available
      * @throws ParameterException when a parameter is not available
      */
-    private static LaneChangeInfo getLaneChangeInfo(final TacticalContextEgo context)
+    private static LaneChangeInfo getLaneChangeInfo(final TacticalContextEgo context, final DcasSystemInterface dcas)
             throws OperationalPlanException, ParameterException
     {
         /*
@@ -108,7 +110,7 @@ public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo
                 infra.getClass().getSimpleName());
         Length minDistPerLC = Length.POSITIVE_INFINITY;
         LaneChangeInfo mostCritical = null;
-        Length maxRange = context.getParameters().getParameter(Dcas.X_NETWORK);
+        Length maxRange = dcas.getSetting(Dcas.X_NETWORK);
         for (LaneChangeInfo lcInfo : infra.getLegalLaneChangeInfo(RelativeLane.CURRENT))
         {
             if (lcInfo.remainingDistance().gt(maxRange))

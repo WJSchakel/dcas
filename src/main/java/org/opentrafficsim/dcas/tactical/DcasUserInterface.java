@@ -38,7 +38,8 @@ public interface DcasUserInterface
     void setUserSpeed(Speed userSpeed);
 
     /**
-     * Returns last acceleration.
+     * Returns last acceleration. Useful for the tactical planner to continue a previous DCAS plan intermitted by a human
+     * evaluation.
      * @return last acceleration
      */
     Acceleration getAcceleration();
@@ -68,6 +69,9 @@ public interface DcasUserInterface
 
         /** Enabled and in normal operation. */
         ON,
+
+        /** Synchronizing. */
+        SYNC,
 
         /** Requesting Transition Of Control. */
         TOC,
