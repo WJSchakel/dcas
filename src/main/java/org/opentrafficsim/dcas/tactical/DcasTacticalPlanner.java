@@ -38,7 +38,9 @@ import org.opentrafficsim.road.gtu.perception.RelativeLane;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelFuller;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelTask;
 import org.opentrafficsim.road.gtu.perception.structure.LaneRecord;
+import org.opentrafficsim.road.gtu.tactical.Synchronizable;
 import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
+import org.opentrafficsim.road.gtu.tactical.WithDesiredSpeed;
 import org.opentrafficsim.road.gtu.tactical.following.CarFollowingModel;
 import org.opentrafficsim.road.gtu.tactical.lmrs.AbstractIncentivesTacticalPlanner;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory;
@@ -58,7 +60,7 @@ import org.opentrafficsim.road.network.Shoulder;
  * @author Wouter Schakel
  * @author Saeed Rahmani
  */
-public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
+public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner implements WithDesiredSpeed, Synchronizable
 {
 
     /** Stimulus time for driver to change lane, increase acceleration, or reduce TOC TD. */
@@ -442,6 +444,24 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner
             Try.execute(() -> dcasSettingsFactory.setValues(settings, gtu.getType()), "Unable to set DCAS setting.");
             return new DcasTacticalPlanner(cf, gtu, perc, new LmrsData(sync, coop, gap, tail), settings);
         };
+    }
+
+    @Override
+    public Speed getDesiredSpeed()
+    {
+        return this.lmrsData.getDesiredSpeed();
+    }
+
+    @Override
+    public State getSynchronizationState()
+    {
+        if (this.dcas.isEnabled())
+        {
+            // If DCAS synchronizes, it immediately also uses the indicator -> INDICATING
+            // Main system interactions with functions do not include a notion of lane change cooperation, so this is ignored.
+            return getState().equals(DcasState.SYNC) ? State.INDICATING : State.NONE;
+        }
+        return this.lmrsData.getSynchronizationState();
     }
 
 }

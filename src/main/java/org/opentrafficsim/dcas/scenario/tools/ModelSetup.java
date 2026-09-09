@@ -11,8 +11,10 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.djunits.unit.SpeedUnit;
 import org.djunits.unit.Unit;
 import org.djunits.value.vdouble.scalar.Acceleration;
+import org.djunits.value.vdouble.scalar.Duration;
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
 import org.djunits.value.vdouble.scalar.base.DoubleScalarRel;
@@ -22,7 +24,14 @@ import org.djutils.immutablecollections.ImmutableMap;
 import org.djutils.reflection.ClassUtil;
 import org.opentrafficsim.animation.Colors;
 import org.opentrafficsim.animation.colorer.Colorer;
+import org.opentrafficsim.animation.data.gtu.AttentionGtuColorer;
+import org.opentrafficsim.animation.data.gtu.DesiredHeadwayGtuColorer;
+import org.opentrafficsim.animation.data.gtu.DesiredSpeedGtuColorer;
 import org.opentrafficsim.animation.data.gtu.GtuTypeGtuColorer;
+import org.opentrafficsim.animation.data.gtu.SocialPressureGtuColorer;
+import org.opentrafficsim.animation.data.gtu.SplitGtuColorer;
+import org.opentrafficsim.animation.data.gtu.SynchronizationGtuColorer;
+import org.opentrafficsim.animation.data.gtu.TaskSaturationGtuColorer;
 import org.opentrafficsim.animation.gtu.DefaultCarAnimation.GtuData.GtuMarker;
 import org.opentrafficsim.base.OtsRuntimeException;
 import org.opentrafficsim.base.logger.Logger;
@@ -59,6 +68,7 @@ import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.FullerImplementatio
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.IdmPlusMultiFunction;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.Setting;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.TacticalPlannerProvider;
+import org.opentrafficsim.road.gtu.tactical.util.lmrs.Synchronization;
 import org.opentrafficsim.road.gtu.tactical.util.lmrs.VoluntaryIncentive;
 import org.opentrafficsim.road.network.RoadNetwork;
 import org.opentrafficsim.road.network.factory.xml.XmlParserException;
@@ -136,6 +146,7 @@ public final class ModelSetup
         Set<Supplier<VoluntaryIncentive>> setTruck =
                 Set.of(() -> IncentiveKeepFix.SINGLETON, () -> IncentiveStayOnSlowLanesFix.SINGLETON);
         Set<Supplier<VoluntaryIncentive>> setCar = Set.of(() -> IncentiveKeepFix.SINGLETON);
+        Boolean socio = true;
         LmrsFactory<AbstractIncentivesTacticalPlanner> lmrsFactory = new LmrsFactory<>(List.of(car, dcas1, dcas2, truck),
                 List.of(Lmrs::new, dcasTacticalPlannerFactory, dcasTacticalPlannerFactory, Lmrs::new))
                         .set(Setting.CAR_FOLLOWING_MODEL, IdmPlusMultiFunction.SINGLETON).setStream(stream)
@@ -144,7 +155,10 @@ public final class ModelSetup
                         .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, car)
                         .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas1)
                         .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas2)
-                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setTruck, truck).set(Setting.INCENTIVE_KEEP, false);
+                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setTruck, truck).set(Setting.INCENTIVE_KEEP, false)
+                        .set(Setting.SOCIO_PRESSURE, socio).set(Setting.SOCIO_TAILGATING, socio).set(Setting.SOCIO_SPEED, socio)
+                        .set(Setting.SOCIO_LANE_CHANGE, socio).set(Setting.SYNCHRONIZATION, Synchronization.ALIGN_GAP)
+                        .set(Setting.ACCELERATION_NO_SLOW_LANE_OVERTAKE, true);
         // .set(Setting.FRACTION_OVERESTIMATION, Assumptions.get().fOverEst()); Bug: gets overwritten by default
         fOverEstFix(lmrsFactory, stream); // Solution: create custom distributions
 
@@ -430,8 +444,8 @@ public final class ModelSetup
             public List<Colorer<? super Gtu>> getGtuColorers()
             {
                 List<Colorer<? super Gtu>> colorers = new ArrayList<>(DEFAULT_GTU_COLORERS);
-                Map<GtuType, Color> colors = new LinkedHashMap<>();
 
+                Map<GtuType, Color> colors = new LinkedHashMap<>();
                 gtuTypes.forEach((id, g) ->
                 {
                     switch (id)
@@ -451,8 +465,18 @@ public final class ModelSetup
                             return;
                     }
                 });
+
                 colorers.add(new GtuTypeGtuColorer(colors, Color.CYAN));
                 colorers.add(new DcasStateColorer());
+                colorers.add(new SynchronizationGtuColorer());
+                colorers.add(new SocialPressureGtuColorer());
+                colorers.add(new TaskSaturationGtuColorer());
+                colorers.add(new AttentionGtuColorer());
+                colorers.add(new DesiredSpeedGtuColorer(new Speed(70.0, SpeedUnit.KM_PER_HOUR),
+                        new Speed(140.0, SpeedUnit.KM_PER_HOUR)));
+                colorers.add(new DesiredHeadwayGtuColorer(Duration.ofSI(0.5), Duration.ofSI(1.6)));
+                colorers.add(new SplitGtuColorer());
+
                 return colorers;
             }
 
