@@ -1,10 +1,7 @@
 package org.opentrafficsim.dcas.tactical;
 
-import java.util.function.BiFunction;
-
 import org.djunits.value.vdouble.scalar.Length;
 import org.djutils.exceptions.Throw;
-import org.opentrafficsim.base.OtsRuntimeException;
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterTypeLength;
 import org.opentrafficsim.base.parameters.constraint.NumericConstraint;
@@ -26,7 +23,7 @@ import org.opentrafficsim.road.network.LaneChangeInfo;
  * @author Wouter Schakel
  * @author Saeed Rahmani
  */
-public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult>
+public class DcasFunctionInfrastructure implements DcasFunction
 {
 
     /** Remaining length per lane change below which DCAS attempts a lane change. */
@@ -46,47 +43,41 @@ public class DcasFunctionInfrastructure implements BiFunction<TacticalContextEgo
 
     @Override
     public DcasFunctionResult apply(final TacticalContextEgo context, final DcasSystemInterface dcas)
+            throws OperationalPlanException, ParameterException
     {
-        try
+        LaneChangeInfo lcInfo = getLaneChangeInfo(context, dcas);
+        if (lcInfo == null)
         {
-            LaneChangeInfo lcInfo = getLaneChangeInfo(context, dcas);
-            if (lcInfo == null)
-            {
-                return DcasFunctionResult.NONE;
-            }
-            Length distPerLc = lcInfo.remainingDistance().divide(lcInfo.numberOfLaneChanges());
-            if (distPerLc.lt(dcas.getSetting(X_MRM)))
-            {
-                return DcasFunctionResult.SHOULDER;
-            }
-            if (distPerLc.lt(dcas.getSetting(X_TOC)))
-            {
-                return DcasFunctionResult.TRANSITION_OF_CONTROL;
-            }
-            if (distPerLc.lt(dcas.getSetting(X_LC)))
-            {
-                LateralDirectionality dir = lcInfo.lateralDirectionality();
-                switch (dir)
-                {
-                    case LEFT:
-                    {
-                        return DcasFunctionResult.CHANGE_LEFT;
-                    }
-                    case RIGHT:
-                    {
-                        return DcasFunctionResult.CHANGE_RIGHT;
-                    }
-                    case NONE:
-                    default:
-                        return DcasFunctionResult.NONE;
-                }
-            }
             return DcasFunctionResult.NONE;
         }
-        catch (OperationalPlanException | ParameterException ex)
+        Length distPerLc = lcInfo.remainingDistance().divide(lcInfo.numberOfLaneChanges());
+        if (distPerLc.lt(dcas.getSetting(X_MRM)))
         {
-            throw new OtsRuntimeException("Unabled to obtain information for PredicateLaneDrop", ex);
+            return DcasFunctionResult.SHOULDER;
         }
+        if (distPerLc.lt(dcas.getSetting(X_TOC)))
+        {
+            return DcasFunctionResult.TRANSITION_OF_CONTROL;
+        }
+        if (distPerLc.lt(dcas.getSetting(X_LC)))
+        {
+            LateralDirectionality dir = lcInfo.lateralDirectionality();
+            switch (dir)
+            {
+                case LEFT:
+                {
+                    return DcasFunctionResult.CHANGE_LEFT;
+                }
+                case RIGHT:
+                {
+                    return DcasFunctionResult.CHANGE_RIGHT;
+                }
+                case NONE:
+                default:
+                    return DcasFunctionResult.NONE;
+            }
+        }
+        return DcasFunctionResult.NONE;
     }
 
     /**

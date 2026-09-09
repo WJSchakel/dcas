@@ -137,8 +137,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
     private final Supplier<Acceleration> userBrakeRequest;
 
     /** DCAS functions. */
-    private final Set<BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult>> functions =
-            new LinkedHashSet<>();
+    private final Set<DcasFunction> functions = new LinkedHashSet<>();
 
     /** User speed. */
     private Speed userSpeed;
@@ -184,6 +183,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         this.functions.add(new DcasFunctionInfrastructure());
         this.functions.add(new DcasFunctionUserLcRequest(userLcRequest)); // might translate request in DcasFunctionResult
         this.functions.add(new DcasFunctionCarFollowing());
+        this.functions.add(new DcasFunctionCooperate());
     }
 
     @Override
@@ -504,11 +504,14 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
      * transition of control, a request is performed.
      * @param context tactical context
      * @return function result of highest priority
+     * @throws OperationalPlanException when a perception category is not available
+     * @throws ParameterException when a parameter is not available
      */
     private DcasFunctionResult applyFunctions(final TacticalContextEgo context)
+            throws OperationalPlanException, ParameterException
     {
         DcasFunctionResult result = DcasFunctionResult.NONE;
-        for (BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult> function : this.functions)
+        for (DcasFunction function : this.functions)
         {
             DcasFunctionResult functionResult = function.apply(context, this);
             if (functionResult.ordinal() > result.ordinal())

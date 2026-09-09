@@ -1,7 +1,5 @@
 package org.opentrafficsim.dcas.tactical;
 
-import java.util.function.BiFunction;
-
 import org.djunits.value.vdouble.scalar.Acceleration;
 import org.opentrafficsim.road.gtu.perception.RelativeLane;
 import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
@@ -14,7 +12,7 @@ import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
  * @author Wouter Schakel
  * @author Saeed Rahmani
  */
-public class DcasFunctionCarFollowing implements BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult>
+public class DcasFunctionCarFollowing implements DcasFunction
 {
 
     @Override

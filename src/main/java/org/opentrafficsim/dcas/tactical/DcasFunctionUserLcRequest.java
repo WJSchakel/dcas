@@ -1,6 +1,5 @@
 package org.opentrafficsim.dcas.tactical;
 
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.opentrafficsim.core.network.LateralDirectionality;
@@ -15,7 +14,7 @@ import org.opentrafficsim.road.gtu.tactical.TacticalContextEgo;
  * @author Wouter Schakel
  * @author Saeed Rahmani
  */
-public class DcasFunctionUserLcRequest implements BiFunction<TacticalContextEgo, DcasSystemInterface, DcasFunctionResult>
+public class DcasFunctionUserLcRequest implements DcasFunction
 {
 
     /** User lane change request supplier. */
