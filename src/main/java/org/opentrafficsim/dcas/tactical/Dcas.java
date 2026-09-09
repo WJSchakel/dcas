@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.djunits.value.vdouble.scalar.Acceleration;
+import org.djunits.value.vdouble.scalar.Duration;
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
 import org.djutils.exceptions.Throw;
@@ -118,6 +119,11 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
     public static final ParameterTypeBoolean SHOULDER_DCAS = new ParameterTypeBoolean("shoulderDcas",
             "System is shoulder Minimum Risk Maneuver able", Assumptions.get().dcas().lc().shoulderDcas());
 
+    /** System is shoulder Minimum Risk Maneuver able. */
+    public static final ParameterTypeDuration TOC_ESCALATE =
+            new ParameterTypeDuration("tocEscDcas", "Time after which a Transition Of Control request is escalated",
+                    Assumptions.get().dcas().tocEscDcas(), NumericConstraint.POSITIVE);
+
     /** Settings for DCAS. */
     private final Parameters settings;
 
@@ -128,7 +134,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
     private final CarFollowingModel carFollowingModel;
 
     /** Consumer that will be activated when DCAS requests transition of control. */
-    private final Consumer<Boolean> transitionOfControl;
+    private final Consumer<TocRequestLevel> transitionOfControl;
 
     /** User throttle request. */
     private final Supplier<Acceleration> userThrottleRequest;
@@ -149,7 +155,10 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
     private Acceleration acceleration;
 
     /** Last operation was at Transition Of Control priority. */
-    private boolean transitionOfControlState = false;
+    private TocRequestLevel transitionOfControlLevel = TocRequestLevel.OFF;
+
+    /** Time at which tTransition Of Control (TOC) request started. */
+    private Duration transitionOfControlStart;
 
     /** Last operation was at Minimal Risk Maneuver priority. */
     private boolean minimalRiskManeuverState = false;
@@ -165,7 +174,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
      * @param userThrottleRequest supplier of the latest user throttle request, which may be {@code null}
      * @param userBrakeRequest supplier of the latest user brake request, which may be {@code null}
      */
-    public Dcas(final Parameters settings, final Consumer<Boolean> transitionOfControl,
+    public Dcas(final Parameters settings, final Consumer<TocRequestLevel> transitionOfControl,
             final Supplier<LateralDirectionality> userLcRequest, final Supplier<Acceleration> userThrottleRequest,
             final Supplier<Acceleration> userBrakeRequest)
     {
@@ -274,9 +283,23 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         this.acceleration = null;
         DcasFunctionResult dcasFunctionResult = applyFunctions(context);
 
-        this.transitionOfControlState = dcasFunctionResult.ordinal() == DcasFunctionResult.TRANSITION_OF_CONTROL.ordinal();
+        if (dcasFunctionResult.ordinal() == DcasFunctionResult.TRANSITION_OF_CONTROL.ordinal())
+        {
+            if (this.transitionOfControlStart == null)
+            {
+                this.transitionOfControlStart = context.getTime();
+            }
+            this.transitionOfControlLevel =
+                    context.getTime().minus(this.transitionOfControlStart).gt(this.settings.getParameter(TOC_ESCALATE))
+                            ? TocRequestLevel.HIGH : TocRequestLevel.LOW;
+        }
+        else
+        {
+            this.transitionOfControlLevel = TocRequestLevel.OFF;
+            this.transitionOfControlStart = null;
+        }
         this.minimalRiskManeuverState = dcasFunctionResult.ordinal() > DcasFunctionResult.TRANSITION_OF_CONTROL.ordinal();
-        this.transitionOfControl.accept(this.transitionOfControlState);
+        this.transitionOfControl.accept(this.transitionOfControlLevel);
 
         Acceleration throttle = this.userThrottleRequest.get();
         if (throttle != null)
@@ -307,7 +330,7 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         {
             return DcasState.MRM;
         }
-        if (this.transitionOfControlState)
+        if (!this.transitionOfControlLevel.equals(TocRequestLevel.OFF))
         {
             return DcasState.TOC;
         }
@@ -520,6 +543,23 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
             }
         }
         return result;
+    }
+
+    /**
+     * Transition Of Control (TOC) request level.
+     */
+    public enum TocRequestLevel
+    {
+
+        /** Off. */
+        OFF,
+
+        /** Low. */
+        LOW,
+
+        /** High. */
+        HIGH;
+
     }
 
 }

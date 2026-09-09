@@ -4,6 +4,7 @@ import org.djunits.value.vdouble.scalar.Duration;
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterTypes;
 import org.opentrafficsim.core.gtu.perception.AbstractPerceptionCategory;
+import org.opentrafficsim.dcas.tactical.Dcas.TocRequestLevel;
 import org.opentrafficsim.road.gtu.LaneBasedGtu;
 import org.opentrafficsim.road.gtu.perception.LanePerception;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelMental;
@@ -33,7 +34,7 @@ public class PerceptionCategoryToc extends AbstractPerceptionCategory<LaneBasedG
      * Returns Transition Of Control request.
      * @return Transition Of Control request
      */
-    public boolean getTransitionOfControlRequest()
+    public TocRequestLevel getTransitionOfControlRequest()
     {
         if (getPerception().getGtu().getTacticalPlanner() instanceof DcasTacticalPlanner dcasPlanner)
         {
@@ -58,7 +59,7 @@ public class PerceptionCategoryToc extends AbstractPerceptionCategory<LaneBasedG
             }
             return dcasPlanner.getTransitionOfControlRequest(when);
         }
-        return false;
+        return TocRequestLevel.OFF;
     }
 
 }

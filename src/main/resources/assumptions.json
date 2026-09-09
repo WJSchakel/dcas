@@ -10,7 +10,8 @@
   "dcas":
   {
     "dtDcas": "0.2s",
-    "xNetwork": "200m",
+    "tocEscDcas": "3.0s",
+    "xNetwork": "1000m",
     "cf":
     {
       "s0Dcas": "3.0m",
@@ -37,7 +38,8 @@
   },
   "human":
   {
-    "tdToc": 0.5,
+    "tdTocLow": 0.25,
+    "tdTocHigh": 0.5,
     "tauStim": "5.0s",
     "tauMin": "0.0s",
     "tauMax": "1.0s"

@@ -163,7 +163,8 @@ public final class ModelSetup
         fOverEstFix(lmrsFactory, stream); // Solution: create custom distributions
 
         // DCAS behavioral human parameters
-        setDefaultParameter(lmrsFactory, dcas, ChannelTaskToc.TD_TOC);
+        setDefaultParameter(lmrsFactory, dcas, ChannelTaskToc.TD_TOC_LOW);
+        setDefaultParameter(lmrsFactory, dcas, ChannelTaskToc.TD_TOC_HIGH);
         setDefaultParameter(lmrsFactory, dcas, DcasTacticalPlanner.TAU_STIM);
 
         // regular human parameters
@@ -209,6 +210,7 @@ public final class ModelSetup
         setDefaultParameter(dcasSettings, Dcas.DT_DCAS);
         setDefaultParameter(dcasSettings, Dcas.LC_DCAS);
         setDefaultParameter(dcasSettings, Dcas.SHOULDER_DCAS);
+        setDefaultParameter(dcasSettings, Dcas.TOC_ESCALATE);
         setDefaultParameter(dcasSettings, DcasFunctionInfrastructure.X_LC);
         setDefaultParameter(dcasSettings, DcasFunctionInfrastructure.X_TOC);
         setDefaultParameter(dcasSettings, DcasFunctionInfrastructure.X_MRM);

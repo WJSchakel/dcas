@@ -29,6 +29,7 @@ import org.opentrafficsim.core.parameters.ParameterFactoryByType;
 import org.opentrafficsim.core.perception.Historical;
 import org.opentrafficsim.core.perception.HistoricalValue;
 import org.opentrafficsim.dcas.scenario.tools.Assumptions;
+import org.opentrafficsim.dcas.tactical.Dcas.TocRequestLevel;
 import org.opentrafficsim.dcas.tactical.DcasUserInterface.DcasState;
 import org.opentrafficsim.road.gtu.LaneBasedGtu;
 import org.opentrafficsim.road.gtu.operational.LaneOperationalPlanBuilder;
@@ -80,7 +81,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner imple
     // Control flow
 
     /** Whether DCAS is requesting Transition Of Control. */
-    private Historical<Boolean> toc;
+    private Historical<TocRequestLevel> toc;
 
     /** Whether the next step is DCAS or human behavior. */
     private boolean nextStepIsDcas = false;
@@ -124,8 +125,8 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner imple
     {
         super(carFollowingModel, gtu, lanePerception);
         this.lmrsData = lmrsData;
-        this.toc = new HistoricalValue<Boolean>(gtu.getSimulator().getReplication().getHistoryManager(gtu.getSimulator()), this,
-                false);
+        this.toc = new HistoricalValue<TocRequestLevel>(
+                gtu.getSimulator().getReplication().getHistoryManager(gtu.getSimulator()), this, TocRequestLevel.OFF);
         this.dcas = new Dcas(dcasSettings, (b) -> this.toc.set(b), () -> this.lcRequest, () -> this.throttleRequest,
                 () -> this.brakeRequest);
 
@@ -194,18 +195,19 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner imple
         {
             if (this.dcas.isEnabled())
             {
-                if (context.getPerception().getPerceptionCategory(PerceptionCategoryToc.class).getTransitionOfControlRequest())
+                if (context.getPerception().getPerceptionCategory(PerceptionCategoryToc.class).getTransitionOfControlRequest()
+                        .equals(TocRequestLevel.OFF))
+                {
+                    // if DCAS is on, the human model only functions as context for an LC request and acceleration overruling
+                    humanModel(context, startTime);
+                    simplePlan = new SimpleOperationalPlan(this.dcas.getAcceleration(), this.nextDcasTime.minus(startTime));
+                }
+                else
                 {
                     Logger.ots().trace("GTU " + getGtu().getId() + " disabled DCAS");
                     this.dcas.setEnabled(false);
                     this.nextDcasTime = Duration.POSITIVE_INFINITY;
                     simplePlan = humanModel(context, startTime);
-                }
-                else
-                {
-                    // if DCAS is on, the human model only functions as context for an LC request and acceleration overruling
-                    humanModel(context, startTime);
-                    simplePlan = new SimpleOperationalPlan(this.dcas.getAcceleration(), this.nextDcasTime.minus(startTime));
                 }
             }
             else
@@ -416,7 +418,7 @@ public class DcasTacticalPlanner extends AbstractIncentivesTacticalPlanner imple
      * @param time time
      * @return whether there is a Transition Of Control request at the given time
      */
-    public boolean getTransitionOfControlRequest(final Duration time)
+    public TocRequestLevel getTransitionOfControlRequest(final Duration time)
     {
         return this.toc.get(time);
     }

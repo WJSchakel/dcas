@@ -1,9 +1,14 @@
 package org.opentrafficsim.dcas.tactical;
 
+import java.util.Optional;
+
+import org.djutils.exceptions.Throw;
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterTypeDouble;
+import org.opentrafficsim.base.parameters.Parameters;
 import org.opentrafficsim.base.parameters.constraint.DualBound;
 import org.opentrafficsim.dcas.scenario.tools.Assumptions;
+import org.opentrafficsim.dcas.tactical.Dcas.TocRequestLevel;
 import org.opentrafficsim.road.gtu.perception.LanePerception;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelTask;
 
@@ -19,9 +24,33 @@ import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelTask;
 public class ChannelTaskToc implements ChannelTask
 {
 
-    /** Level of task demand during Transition Of Control. */
-    public static final ParameterTypeDouble TD_TOC = new ParameterTypeDouble("TD_TOC",
-            "Task demand during transition of control.", Assumptions.get().human().tdToc(), DualBound.UNITINTERVAL);
+    /** Task demand during low level request for transition of control. */
+    public static final ParameterTypeDouble TD_TOC_LOW =
+            new ParameterTypeDouble("TD_TOC_LOW", "Task demand during low level request for transition of control",
+                    Assumptions.get().human().tdTocLow(), DualBound.UNITINTERVAL)
+            {
+                @Override
+                public void check(final Double value, final Parameters params) throws ParameterException
+                {
+                    Optional<Double> high = params.getOptionalParameter(TD_TOC_HIGH);
+                    Throw.when(high.isPresent() && high.get() <= value, ParameterException.class,
+                            "Existing value of TD_TOC_HIGH is lower than or equal to set value of TD_TOC_LOW");
+                }
+            };
+
+    /** Task demand during high level request for transition of control. */
+    public static final ParameterTypeDouble TD_TOC_HIGH =
+            new ParameterTypeDouble("TD_TOC_HIGH", "Task demand during high level request for transition of control",
+                    Assumptions.get().human().tdTocHigh(), DualBound.UNITINTERVAL)
+            {
+                @Override
+                public void check(final Double value, final Parameters params) throws ParameterException
+                {
+                    Optional<Double> low = params.getOptionalParameter(TD_TOC_LOW);
+                    Throw.when(low.isPresent() && low.get() >= value, ParameterException.class,
+                            "Existing value of TD_TOC_LOW is higher than or equal to set value of TD_TOC_HIGH");
+                }
+            };
 
     /** Cached task demand. */
     private double td;
@@ -33,10 +62,17 @@ public class ChannelTaskToc implements ChannelTask
     public double getTaskDemand(final LanePerception perception) throws ParameterException
     {
         double tdNew;
-        if (perception.getGtu().getTacticalPlanner() instanceof DcasTacticalPlanner dcasPlanner
-                && dcasPlanner.getTransitionOfControlRequest(perception.getGtu().getSimulator().getSimulatorTime()))
+
+        if (perception.getGtu().getTacticalPlanner() instanceof DcasTacticalPlanner dcasPlanner)
         {
-            tdNew = perception.getGtu().getParameters().getParameter(TD_TOC);
+            TocRequestLevel toc =
+                    dcasPlanner.getTransitionOfControlRequest(perception.getGtu().getSimulator().getSimulatorTime());
+            tdNew = switch (toc)
+            {
+                case OFF -> 0.0;
+                case LOW -> perception.getGtu().getParameters().getParameter(TD_TOC_LOW);
+                case HIGH -> perception.getGtu().getParameters().getParameter(TD_TOC_HIGH);
+            };
         }
         else
         {
