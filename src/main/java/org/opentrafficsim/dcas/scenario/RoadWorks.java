@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import org.djunits.unit.DurationUnit;
 import org.djunits.unit.FrequencyUnit;
 import org.djunits.value.vdouble.scalar.Frequency;
+import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.vector.DurationVector;
 import org.djunits.value.vdouble.vector.FrequencyVector;
 import org.djutils.cli.CliUtil;
@@ -16,7 +17,9 @@ import org.opentrafficsim.core.definitions.Definitions;
 import org.opentrafficsim.core.dsol.OtsSimulatorInterface;
 import org.opentrafficsim.core.gtu.GtuType;
 import org.opentrafficsim.core.network.Node;
+import org.opentrafficsim.core.object.DetectorType;
 import org.opentrafficsim.core.parameters.ParameterFactoryByType;
+import org.opentrafficsim.dcas.object.matrix.MatrixControllerRws;
 import org.opentrafficsim.dcas.scenario.tools.ModelSetup;
 import org.opentrafficsim.dcas.tactical.Dcas;
 import org.opentrafficsim.road.network.RoadNetwork;
@@ -71,7 +74,7 @@ public class RoadWorks extends AbstractSimulationScript
     private boolean shoulderDcas;
 
     /** Peak demand. */
-    @Option(names = "--demand", description = "Peak demand", defaultValue = "4000/h")
+    @Option(names = "--demand", description = "Peak demand", defaultValue = "4200/h")
     private Frequency demand;
 
     /** GTU types mapped from ID to object. */
@@ -114,6 +117,14 @@ public class RoadWorks extends AbstractSimulationScript
             Definitions definitions = xmlParser.build().definitions();
             this.gtuTypes = definitions.getAll(GtuType.class);
 
+            ModelSetup.addMatrixGantry(network.getLink("A-B").get(), Length.ofSI(400.0));
+            ModelSetup.addMatrixGantry(network.getLink("A-B").get(), Length.ofSI(900.0));
+            ModelSetup.addMatrixGantry(network.getLink("A-B").get(), Length.ofSI(1400.0));
+            ModelSetup.addMatrixGantry(network.getLink("A-B").get(), Length.ofSI(1900.0));
+            ModelSetup.addMatrixGantry(network.getLink("D-E").get(), Length.ofSI(100.0));
+            ModelSetup.addMatrixGantry(network.getLink("D-E").get(), Length.ofSI(600.0));
+            new MatrixControllerRws(network, definitions.get(DetectorType.class, "VEHICLE").get());
+
             GtuType car = this.gtuTypes.get("CAR");
             GtuType dcas1 = this.gtuTypes.get("DCAS1");
             GtuType dcas2 = this.gtuTypes.get("DCAS2");
@@ -144,7 +155,7 @@ public class RoadWorks extends AbstractSimulationScript
                     new OdMatrix("od", origins, destinations, categorization, globalDurationVector, globalInterPolation);
 
             FrequencyVector demandVector = new FrequencyVector(
-                    new double[] {this.demand.si * .5, this.demand.si, this.demand.si * .5}, FrequencyUnit.SI);
+                    new double[] {this.demand.si * .5, this.demand.si, this.demand.si * .0}, FrequencyUnit.SI);
 
             Category carCategory = new Category(categorization, car); // can add Route.class instance
             odMatrix.putDemandVector(nodeA, nodeE, carCategory, demandVector, (1.0 - this.fTruck) * (1.0 - this.fDcas));

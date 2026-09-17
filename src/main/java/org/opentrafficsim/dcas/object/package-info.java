@@ -1,0 +1,9 @@
+/**
+ * This package and sub-packages contain classes that represent road-side objects, including their logic and animation.
+ * <p>
+ * Copyright (c) 2026-2026 Delft University of Technology, PO Box 5, 2600 AA, Delft, the Netherlands. All rights reserved.<br>
+ * BSD-style license. See <a href="https://opentrafficsim.org/docs/license.html">OpenTrafficSim License</a>.
+ * @author Wouter Schakel
+ * @author Saeed Rahmani
+ */
+package org.opentrafficsim.dcas.object;

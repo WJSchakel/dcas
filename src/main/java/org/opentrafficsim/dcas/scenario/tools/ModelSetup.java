@@ -18,7 +18,10 @@ import org.djunits.value.vdouble.scalar.Duration;
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
 import org.djunits.value.vdouble.scalar.base.DoubleScalarRel;
+import org.djutils.draw.point.Point2d;
 import org.djutils.eval.Eval;
+import org.djutils.event.Event;
+import org.djutils.event.EventListener;
 import org.djutils.exceptions.Throw;
 import org.djutils.immutablecollections.ImmutableMap;
 import org.djutils.reflection.ClassUtil;
@@ -34,6 +37,7 @@ import org.opentrafficsim.animation.data.gtu.SynchronizationGtuColorer;
 import org.opentrafficsim.animation.data.gtu.TaskSaturationGtuColorer;
 import org.opentrafficsim.animation.gtu.DefaultCarAnimation.GtuData.GtuMarker;
 import org.opentrafficsim.base.OtsRuntimeException;
+import org.opentrafficsim.base.geometry.FractionalProjectionHelper.FractionalFallback;
 import org.opentrafficsim.base.logger.Logger;
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterType;
@@ -43,9 +47,16 @@ import org.opentrafficsim.core.distributions.ConstantSupplier;
 import org.opentrafficsim.core.gtu.Gtu;
 import org.opentrafficsim.core.gtu.GtuTemplate;
 import org.opentrafficsim.core.gtu.GtuType;
+import org.opentrafficsim.core.network.Link;
+import org.opentrafficsim.core.network.Network;
+import org.opentrafficsim.core.network.NetworkException;
 import org.opentrafficsim.core.object.DetectorType;
+import org.opentrafficsim.core.object.LocatedObject;
 import org.opentrafficsim.core.parameters.ParameterFactoryByType;
 import org.opentrafficsim.core.units.distributions.ContinuousDistDoubleScalar;
+import org.opentrafficsim.dcas.object.matrix.AnimationMatrixData;
+import org.opentrafficsim.dcas.object.matrix.MatrixSign;
+import org.opentrafficsim.dcas.object.matrix.MatrixSignAnimation;
 import org.opentrafficsim.dcas.tactical.ChannelTaskToc;
 import org.opentrafficsim.dcas.tactical.Dcas;
 import org.opentrafficsim.dcas.tactical.DcasFunctionInfrastructure;
@@ -70,6 +81,8 @@ import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.Setting;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.TacticalPlannerProvider;
 import org.opentrafficsim.road.gtu.tactical.util.lmrs.Synchronization;
 import org.opentrafficsim.road.gtu.tactical.util.lmrs.VoluntaryIncentive;
+import org.opentrafficsim.road.network.CrossSectionLink;
+import org.opentrafficsim.road.network.Lane;
 import org.opentrafficsim.road.network.RoadNetwork;
 import org.opentrafficsim.road.network.factory.xml.XmlParserException;
 import org.opentrafficsim.road.network.factory.xml.parser.DefinitionsParser;
@@ -79,11 +92,14 @@ import org.opentrafficsim.road.network.factory.xml.utils.ParseUtil;
 import org.opentrafficsim.road.od.OdApplier;
 import org.opentrafficsim.road.od.OdMatrix;
 import org.opentrafficsim.road.od.OdOptions;
+import org.opentrafficsim.swing.gui.OtsSimulationPanel;
 import org.opentrafficsim.swing.gui.OtsSimulationPanelDecorator;
 import org.opentrafficsim.xml.generated.ConstantDistType;
 import org.opentrafficsim.xml.generated.GtuTemplates;
 import org.opentrafficsim.xml.generated.Ots;
 
+import nl.tudelft.simulation.dsol.animation.Locatable;
+import nl.tudelft.simulation.dsol.animation.d2.Renderable2d;
 import nl.tudelft.simulation.dsol.experiment.StreamInformation;
 import nl.tudelft.simulation.jstats.distributions.DistEmpiricalDiscreteDouble;
 import nl.tudelft.simulation.jstats.distributions.DistNormalTrunc;
@@ -495,6 +511,70 @@ public final class ModelSetup
                     }
                 };
             }
+
+            @Override
+            public void animateSimulation(final OtsSimulationPanel simulationPanel, final Network network)
+            {
+                OtsSimulationPanelDecorator.super.animateSimulation(simulationPanel, network);
+
+                Map<Locatable, Renderable2d<?>> animatedMatrixSigns = new LinkedHashMap<Locatable, Renderable2d<?>>();
+                EventListener matrixAnimator = new EventListener()
+                {
+                    @Override
+                    public void notify(final Event event)
+                    {
+                        LocatedObject object = network.getObjectMap().get((String) event.getContent());
+                        if (object instanceof MatrixSign matrix)
+                        {
+                            if (event.getType().equals(Network.OBJECT_ADD_EVENT))
+                            {
+                                animatedMatrixSigns.put(object,
+                                        new MatrixSignAnimation(new AnimationMatrixData(matrix), network.getSimulator()));
+                            }
+                            else
+                            {
+                                // OBJECT_REMOVE_EVENT
+                                Renderable2d<?> renderable = animatedMatrixSigns.remove(object);
+                                if (renderable != null)
+                                {
+                                    renderable.destroy(network.getSimulator());
+                                }
+                            }
+                        }
+                    }
+                };
+                network.addListener(matrixAnimator, Network.OBJECT_ADD_EVENT);
+                network.addListener(matrixAnimator, Network.OBJECT_REMOVE_EVENT);
+
+                // current objects
+                for (LocatedObject object : network.getObjectMap().values())
+                {
+                    if (object instanceof MatrixSign matrix)
+                    {
+                        animatedMatrixSigns.put(object,
+                                new MatrixSignAnimation(new AnimationMatrixData(matrix), network.getSimulator()));
+                    }
+                }
+            }
+
         };
     }
+
+    /**
+     * Adds matrix signs on each lane at the given position on the link.
+     * @param link link
+     * @param position position
+     * @throws NetworkException if the position is out of bounds of the link
+     */
+    public static void addMatrixGantry(final Link link, final Length position) throws NetworkException
+    {
+        Point2d p = link.getDesignLine().getLocation(position);
+        for (Lane lane : ((CrossSectionLink) link).getLanes())
+        {
+            double pos = lane.getCenterLine().projectFractionalAt(link.getStartNode().getHeading(),
+                    link.getEndNode().getHeading(), p.x, p.y, FractionalFallback.ENDPOINT);
+            new MatrixSign("Matrix_" + position, lane, Length.ofSI(pos * lane.getCenterLine().getLength()));
+        }
+    }
+
 }
