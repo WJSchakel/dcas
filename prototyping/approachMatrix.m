@@ -6,7 +6,7 @@ depending on ego-speed sensitivity.
 %}
 
 v0 = 100/3.6;
-a = 2.25;
+a = 1.25;
 b = 2.09;
 b0 = 0.5;
 T = 1.2;
@@ -25,6 +25,7 @@ A value of 1000km/h is used as a dummy value for DCAS with full willingness
 towards carefully approaching traffic ahead.
 %}
 vGain = [0, 22.4, 29.3, 38.4, 1000]/3.6; % different cases of ego-speed sensitivity approaching matrix
+range = [295.0, 295.0, 295.0, 295.0, 150.0];
 
 xb = ones(size(vGain)) .* -sStart; % b = IDM and matrix response
 vb = ones(size(vGain)) .* v0;
@@ -32,14 +33,22 @@ gb = [];
 xLead = 0;
 
 while vb(end,end) > vLead(end) + 1e-2
-    % IDM and matrix response at different ego-speed sensitivity (b)
+    % IDM and matrix response at different ego-speed sensitivity
     j = size(xb,1);
     for i = 1:size(xb, 2)
-        gIdm = idm(s0, vb(j,i), T, a, b, v0, vb(j,i)-vLead(j), xLead-xb(j,i));
+        s = xLead-xb(j,i);
+        dv = vb(j,i)-vLead(j);
+        if s > range(i)
+            s = range(i);
+            dv = max(0, vb(j,i)-vMatrix);
+            gIdm = idm(s0, vb(j,i), T, a, b, b0, v0, 0.0, inf);
+        else
+            gIdm = idm(s0, vb(j,i), T, a, b, b0, v0, dv, s);
+        end
         f = min(1, vGain(i)/vMatrix);
         %f = min(1, max(0, 1-(vMatrix - vGain(i))/vb(end,i)));
         bb = b - f * (b-b0);
-        gVms = max(-b, idm(s0, vb(j,i), T, a, bb, v0, vb(j,i)-vLead(j), xLead-xb(j,i)));
+        gVms = max(-b, idm(s0, vb(j,i), T, a, bb, b0, v0, dv, s));
         gb(j,i) = min(gIdm, gVms);
     end
 
@@ -71,9 +80,9 @@ makePlot(2, t, vb, 't [s]', 'v [m/s]', legLab, 'NorthEast');
 makePlot(3, xb, gb, 'x [m]', 'a [m/s^2]', legLab, 'SouthWest');
 makePlot(4, t, gb, 't [s]', 'a [m/s^2]', legLab, 'SouthEast');
 
-function g = idm(s0, v, T, a, b, v0, dv, s)
-    ss = s0 + v(end)*T + v(end)*dv/(2*sqrt(a*b));
-    g = a*min(1-(v(end)/v0)^4, 1-(ss/s)^2);
+function g = idm(s0, v, T, a, b, b0, v0, dv, s)
+    ss = s0 + v*T + v*dv/(2*sqrt(a*b));
+    g = a*min(max(-b0, 1-(v/v0)^4), 1-(ss/s)^2);
 end
 
 function [x1, v1] = extrap(x0, v0, g, dt)
