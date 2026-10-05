@@ -43,7 +43,7 @@
     </xi:include>
   </ots:Definitions>
   <ots:Network>
-    <ots:Node Coordinate="(0,0)" Id="A"/>
+    <ots:Node Coordinate="(-1000,0)" Id="A"/>
     <ots:Node Coordinate="(1000,0)" Id="B"/>
     <ots:Node Coordinate="(1100.0,-3.5)" Id="C"/>
     <ots:Node Coordinate="(1300,0.0)" Id="D"/>
