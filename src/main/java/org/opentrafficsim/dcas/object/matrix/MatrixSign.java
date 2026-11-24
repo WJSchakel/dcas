@@ -1,7 +1,9 @@
 package org.opentrafficsim.dcas.object.matrix;
 
+import org.djunits.unit.SpeedUnit;
 import org.djunits.value.vdouble.scalar.Duration;
 import org.djunits.value.vdouble.scalar.Length;
+import org.djunits.value.vdouble.scalar.Speed;
 import org.opentrafficsim.core.dsol.OtsSimulatorInterface;
 import org.opentrafficsim.core.network.NetworkException;
 import org.opentrafficsim.core.perception.Historical;
@@ -89,42 +91,83 @@ public class MatrixSign extends AbstractLaneBasedObject
     }
 
     /**
+     * Returns matrix control state.
+     * @return matrix control state
+     */
+    public ControlType getControlType()
+    {
+        return this.state.get().controlType();
+    }
+
+    /**
      * Matrix sign state.
      */
     public enum MatrixState
     {
+
         /** 50km/h. */
-        V50,
+        V50(new Speed(50, SpeedUnit.KM_PER_HOUR)),
 
         /** 70km/h. */
-        V70,
+        V70(new Speed(70, SpeedUnit.KM_PER_HOUR)),
 
         /** 80km/h. */
-        V80,
+        V80(new Speed(80, SpeedUnit.KM_PER_HOUR)),
 
         /** 90km/h. */
-        V90,
+        V90(new Speed(90, SpeedUnit.KM_PER_HOUR)),
 
         /** 100km/h. */
-        V100,
+        V100(new Speed(100, SpeedUnit.KM_PER_HOUR)),
 
         /** Cross. */
-        X,
+        X(null),
 
         /** Left arrow. */
-        LEFT,
+        LEFT(null),
 
         /** Right arrow. */
-        RIGHT,
+        RIGHT(null),
 
         /** Down arrow. */
-        DOWN,
+        DOWN(null),
 
         /** End of all prohibitions. */
-        END,
+        END(null),
 
         /** Blank. */
-        BLANK;
+        BLANK(null);
+
+        /** Returns the speed limit. */
+        private final Speed speed;
+
+        /**
+         * Constructor.
+         * @param speed speed limit, or null if not a speed limit
+         */
+        MatrixState(final Speed speed)
+        {
+            this.speed = speed;
+        }
+
+        /**
+         * Returns whether the matrix state is a speed limit.
+         * @return whether the matrix state is a speed limit
+         */
+        public boolean isSpeedLimit()
+        {
+            return this.speed != null;
+        }
+
+        /**
+         * Returns the speed limit, or null if not a speed limit.
+         * @return the speed limit, or null if not a speed limit
+         */
+        public Speed getSpeed()
+        {
+            return this.speed;
+        }
+
     }
 
     /**

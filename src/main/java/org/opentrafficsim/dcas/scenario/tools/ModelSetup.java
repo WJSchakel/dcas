@@ -57,22 +57,27 @@ import org.opentrafficsim.core.units.distributions.ContinuousDistDoubleScalar;
 import org.opentrafficsim.dcas.object.matrix.AnimationMatrixData;
 import org.opentrafficsim.dcas.object.matrix.MatrixSign;
 import org.opentrafficsim.dcas.object.matrix.MatrixSignAnimation;
+import org.opentrafficsim.dcas.tactical.AccelerationIncentiveMatrix;
 import org.opentrafficsim.dcas.tactical.ChannelTaskToc;
 import org.opentrafficsim.dcas.tactical.Dcas;
 import org.opentrafficsim.dcas.tactical.DcasFunctionInfrastructure;
 import org.opentrafficsim.dcas.tactical.DcasTacticalPlanner;
 import org.opentrafficsim.dcas.tactical.IncentiveKeepFix;
 import org.opentrafficsim.dcas.tactical.IncentiveStayOnSlowLanesFix;
+import org.opentrafficsim.dcas.tactical.MatrixPerception;
+import org.opentrafficsim.road.gtu.LaneBasedGtu;
 import org.opentrafficsim.road.gtu.generator.GeneratorPositions.LaneBias;
 import org.opentrafficsim.road.gtu.generator.GeneratorPositions.LaneBiases;
 import org.opentrafficsim.road.gtu.generator.characteristics.DefaultLaneBasedGtuCharacteristicsGeneratorOd;
 import org.opentrafficsim.road.gtu.generator.characteristics.DefaultLaneBasedGtuCharacteristicsGeneratorOd.Factory;
 import org.opentrafficsim.road.gtu.generator.characteristics.LaneBasedGtuTemplate;
+import org.opentrafficsim.road.gtu.perception.LanePerception;
 import org.opentrafficsim.road.gtu.perception.mental.Fuller;
 import org.opentrafficsim.road.gtu.perception.mental.channel.ChannelFuller;
 import org.opentrafficsim.road.gtu.strategical.LaneBasedStrategicalRoutePlannerFactory;
 import org.opentrafficsim.road.gtu.tactical.following.AbstractIdm;
 import org.opentrafficsim.road.gtu.tactical.lmrs.AbstractIncentivesTacticalPlanner;
+import org.opentrafficsim.road.gtu.tactical.lmrs.AccelerationIncentive;
 import org.opentrafficsim.road.gtu.tactical.lmrs.Lmrs;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory;
 import org.opentrafficsim.road.gtu.tactical.lmrs.LmrsFactory.FullerImplementation;
@@ -163,18 +168,29 @@ public final class ModelSetup
                 Set.of(() -> IncentiveKeepFix.SINGLETON, () -> IncentiveStayOnSlowLanesFix.SINGLETON);
         Set<Supplier<VoluntaryIncentive>> setCar = Set.of(() -> IncentiveKeepFix.SINGLETON);
         Boolean socio = true;
+        Set<Supplier<AccelerationIncentive>> accelIncentives = Set.of(() -> AccelerationIncentiveMatrix.SINGLETON);
         LmrsFactory<AbstractIncentivesTacticalPlanner> lmrsFactory = new LmrsFactory<>(List.of(car, dcas1, dcas2, truck),
                 List.of(Lmrs::new, dcasTacticalPlannerFactory, dcasTacticalPlannerFactory, Lmrs::new))
-                        .set(Setting.CAR_FOLLOWING_MODEL, IdmPlusMultiFunction.SINGLETON).setStream(stream)
-                        .set(Setting.ACCELERATION_TRAFFIC_LIGHTS, true).set(Setting.ACCELERATION_SPEED_LIMIT_TRANSITION, true)
-                        .set(Setting.FULLER_IMPLEMENTATION, FullerImplementation.ATTENTION_MATRIX)
-                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, car)
-                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas1)
-                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas2)
-                        .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setTruck, truck).set(Setting.INCENTIVE_KEEP, false)
-                        .set(Setting.SOCIO_PRESSURE, socio).set(Setting.SOCIO_TAILGATING, socio).set(Setting.SOCIO_SPEED, socio)
-                        .set(Setting.SOCIO_LANE_CHANGE, socio).set(Setting.SYNCHRONIZATION, Synchronization.ALIGN_GAP)
-                        .set(Setting.ACCELERATION_NO_SLOW_LANE_OVERTAKE, true);
+        {
+
+            @Override
+            protected LanePerception getPerception(final LaneBasedGtu gtu)
+            {
+                LanePerception perception = super.getPerception(gtu);
+                perception.addPerceptionCategory(new MatrixPerception(perception));
+                return perception;
+            }
+
+        }.set(Setting.CAR_FOLLOWING_MODEL, IdmPlusMultiFunction.SINGLETON).setStream(stream)
+                .set(Setting.ACCELERATION_TRAFFIC_LIGHTS, true).set(Setting.ACCELERATION_SPEED_LIMIT_TRANSITION, true)
+                .set(Setting.FULLER_IMPLEMENTATION, FullerImplementation.ATTENTION_MATRIX)
+                .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, car).set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas1)
+                .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setCar, dcas2)
+                .set(Setting.CUSTOM_VOLUNTARY_INCENTIVES, setTruck, truck).set(Setting.INCENTIVE_KEEP, false)
+                .set(Setting.SOCIO_PRESSURE, socio).set(Setting.SOCIO_TAILGATING, socio).set(Setting.SOCIO_SPEED, socio)
+                .set(Setting.SOCIO_LANE_CHANGE, socio).set(Setting.SYNCHRONIZATION, Synchronization.ALIGN_GAP)
+                .set(Setting.ACCELERATION_NO_SLOW_LANE_OVERTAKE, true)
+                .set(Setting.CUSTOM_ACCELERATION_INCENTIVES, accelIncentives);
         // .set(Setting.FRACTION_OVERESTIMATION, Assumptions.get().fOverEst()); Bug: gets overwritten by default
         fOverEstFix(lmrsFactory, stream); // Solution: create custom distributions
 
