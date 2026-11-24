@@ -18,6 +18,7 @@ import org.opentrafficsim.core.gtu.RelativePosition;
 import org.opentrafficsim.core.network.Link;
 import org.opentrafficsim.core.network.NetworkException;
 import org.opentrafficsim.core.object.DetectorType;
+import org.opentrafficsim.dcas.object.matrix.MatrixSign.ControlType;
 import org.opentrafficsim.dcas.object.matrix.MatrixSign.MatrixState;
 import org.opentrafficsim.road.gtu.LaneBasedGtu;
 import org.opentrafficsim.road.network.CrossSectionLink;
@@ -262,7 +263,13 @@ public class MatrixControllerRws
     private void setHighestPriorityState(final MatrixSign matrix)
     {
         TreeMap<Priority, MatrixState> mStates = this.states.get(matrix);
-        matrix.setState(mStates != null && !mStates.isEmpty() ? mStates.lastEntry().getValue() : MatrixState.BLANK);
+        if (mStates == null || mStates.isEmpty())
+        {
+            matrix.setState(MatrixState.BLANK, ControlType.STATIC);
+            return;
+        }
+        Entry<Priority, MatrixState> entry = mStates.lastEntry();
+        matrix.setState(entry.getValue(), Priority.OVERRULE.equals(entry.getKey()) ? ControlType.STATIC : ControlType.DYNAMIC);
     }
 
     /**

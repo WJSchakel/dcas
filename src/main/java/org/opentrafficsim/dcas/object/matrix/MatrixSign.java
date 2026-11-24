@@ -22,7 +22,7 @@ public class MatrixSign extends AbstractLaneBasedObject
 {
 
     /** Matrix state. */
-    private Historical<MatrixState> state;
+    private Historical<MatrixControlState> state;
 
     /**
      * Constructor.
@@ -35,17 +35,19 @@ public class MatrixSign extends AbstractLaneBasedObject
     {
         super(id, lane, longitudinalPosition, LaneBasedObject.makeLine(lane, longitudinalPosition), Length.ZERO);
         OtsSimulatorInterface simulator = lane.getLink().getSimulator();
-        this.state = new HistoricalValue<>(simulator.getReplication().getHistoryManager(simulator), this, MatrixState.BLANK);
+        this.state = new HistoricalValue<>(simulator.getReplication().getHistoryManager(simulator), this,
+                new MatrixControlState(MatrixState.BLANK, ControlType.STATIC));
         init();
     }
 
     /**
      * Sets the matrix state.
-     * @param state matrix state
+     * @param matrixState matrix state
+     * @param controlType whether the state is dynamically controlled
      */
-    public void setState(final MatrixState state)
+    public void setState(final MatrixState matrixState, final ControlType controlType)
     {
-        this.state.set(state);
+        this.state.set(new MatrixControlState(matrixState, controlType));
     }
 
     /**
@@ -54,7 +56,7 @@ public class MatrixSign extends AbstractLaneBasedObject
      */
     public MatrixState getState()
     {
-        return this.state.get();
+        return this.state.get().matrixState();
     }
 
     /**
@@ -64,7 +66,26 @@ public class MatrixSign extends AbstractLaneBasedObject
      */
     public MatrixState getState(final Duration time)
     {
-        return this.state.get(time);
+        return this.state.get(time).matrixState();
+    }
+
+    /**
+     * Returns matrix state.
+     * @return matrix state
+     */
+    public boolean isDynamicControl()
+    {
+        return ControlType.DYNAMIC.equals(this.state.get().controlType());
+    }
+
+    /**
+     * Returns matrix state at the given time.
+     * @param time time
+     * @return matrix state at the given time
+     */
+    public boolean isDynamicControl(final Duration time)
+    {
+        return ControlType.DYNAMIC.equals(this.state.get(time).controlType());
     }
 
     /**
@@ -104,6 +125,27 @@ public class MatrixSign extends AbstractLaneBasedObject
 
         /** Blank. */
         BLANK;
+    }
+
+    /**
+     * Control type.
+     */
+    public enum ControlType
+    {
+        /** Dynamic control. */
+        DYNAMIC,
+
+        /** Static control, e.g. fixed speed limits during road works or rush hour. */
+        STATIC;
+    }
+
+    /**
+     * Storage of matrix state and control type.
+     * @param matrixState matrix state
+     * @param controlType control type
+     */
+    private record MatrixControlState(MatrixState matrixState, ControlType controlType)
+    {
     }
 
 }
