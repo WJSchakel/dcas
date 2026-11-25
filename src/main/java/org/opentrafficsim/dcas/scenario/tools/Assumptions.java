@@ -49,11 +49,13 @@ public record Assumptions(Scenario scenario, Dcas dcas, Human human)
      * @param dtDcas DCAS system time step
      * @param tocEscDcas time after which a Transition Of Control request is escalated
      * @param xNetwork DCAS extent over which it knows the network
+     * @param sensorRange DCAS sensor range
      * @param cf car-following assumptions
      * @param lc lane-change settings
      * @param infra infra settings
      */
-    public record Dcas(Duration dtDcas, Duration tocEscDcas, Length xNetwork, CarFollowing cf, LaneChange lc, Infra infra)
+    public record Dcas(Duration dtDcas, Duration tocEscDcas, Length xNetwork, Length sensorRange, CarFollowing cf,
+            LaneChange lc, Infra infra)
     {
 
         /**

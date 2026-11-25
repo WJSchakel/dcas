@@ -1,6 +1,7 @@
 package org.opentrafficsim.dcas.tactical;
 
 import org.djunits.value.vdouble.scalar.Acceleration;
+import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
 import org.opentrafficsim.base.parameters.ParameterType;
 import org.opentrafficsim.road.gtu.perception.RelativeLane;
@@ -44,6 +45,16 @@ public interface DcasSystemInterface
      * @return car-following acceleration for the DCAS system
      */
     Acceleration getCarFollowingAcceleration(TacticalContextEgo context, RelativeLane lane);
+
+    /**
+     * Returns car-following acceleration for an object at given distance and speed, adjusting sensitivities for comfort level.
+     * @param context tactical context
+     * @param distance distance of object to follow
+     * @param leaderSpeed speed of leader
+     * @param comfortLevel normalized comfort level (1.0 = most comfortable)
+     * @return car-following acceleration for an object at given distance and speed
+     */
+    Acceleration getAcceleration(TacticalContextEgo context, Length distance, Speed leaderSpeed, double comfortLevel);
 
     /**
      * Sets an acceleration for DCAS. This method can be called by system functions that determine acceleration. The minimum of

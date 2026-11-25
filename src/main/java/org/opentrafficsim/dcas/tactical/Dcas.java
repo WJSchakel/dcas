@@ -48,6 +48,7 @@ import org.opentrafficsim.road.gtu.tactical.following.CarFollowingModel;
 import org.opentrafficsim.road.gtu.tactical.following.DesiredHeadwayModel;
 import org.opentrafficsim.road.gtu.tactical.following.DesiredSpeedModel;
 import org.opentrafficsim.road.gtu.tactical.following.IdmPlus;
+import org.opentrafficsim.road.gtu.tactical.util.CarFollowingUtil;
 import org.opentrafficsim.road.network.Shoulder;
 
 /**
@@ -124,6 +125,10 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
             new ParameterTypeDuration("tocEscDcas", "Time after which a Transition Of Control request is escalated",
                     Assumptions.get().dcas().tocEscDcas(), NumericConstraint.POSITIVE);
 
+    /** Sensor range of DCAS system. */
+    public static final ParameterTypeLength SENSOR_RANGE = new ParameterTypeLength("sensorRange", "Sensor range of DCAS system",
+            Assumptions.get().dcas().sensorRange(), NumericConstraint.POSITIVE);
+
     /** Settings for DCAS. */
     private final Parameters settings;
 
@@ -188,11 +193,12 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         this.transitionOfControl = transitionOfControl;
         this.userThrottleRequest = userThrottleRequest;
         this.userBrakeRequest = userBrakeRequest;
-
+        
         this.functions.add(new DcasFunctionInfrastructure());
         this.functions.add(new DcasFunctionUserLcRequest(userLcRequest)); // might translate request in DcasFunctionResult
         this.functions.add(new DcasFunctionCarFollowing());
         this.functions.add(new DcasFunctionCooperate());
+        this.functions.add(new DcasFunctionMatrix());
     }
 
     @Override
@@ -253,15 +259,24 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
             PerceptionIterableSet<PerceivedObject> leader;
             if (leaders.isEmpty())
             {
+                // no leader, so use empty set
                 leader = new PerceptionIterableSet<>();
             }
             else
             {
                 // take exact leader information from underlying object
                 DistancedObject<LaneBasedGtu> rawLeader = leaders.underlyingWithDistance().next();
-                leader = new PerceptionIterableSet<>(
-                        new PerceivedObjectBase(rawLeader.object().getId(), ObjectType.GTU, Length.ONE, new Kinematics.Record(
-                                rawLeader.distance(), rawLeader.object().getSpeed(), Acceleration.ZERO, true, Overlap.AHEAD)));
+                if (rawLeader.distance().si > this.settings.getParameter(SENSOR_RANGE).si)
+                {
+                    // leader is outside sensor range, so use empty set
+                    leader = new PerceptionIterableSet<>();
+                }
+                else
+                {
+                    leader = new PerceptionIterableSet<>(new PerceivedObjectBase(rawLeader.object().getId(), ObjectType.GTU,
+                            Length.ONE, new Kinematics.Record(rawLeader.distance(), rawLeader.object().getSpeed(),
+                                    Acceleration.ZERO, true, Overlap.AHEAD)));
+                }
             }
             return this.carFollowingModel.followingAcceleration(this.settings, context.getSpeed(), context.getSpeedLimits(),
                     context.getMaximumSpeed(), leader);
@@ -269,6 +284,27 @@ public class Dcas implements DcasSystemInterface, DcasUserInterface
         catch (OperationalPlanException | ParameterException ex)
         {
             throw new OtsRuntimeException("Unable to determine car-following acceleration of DCAS system.", ex);
+        }
+    }
+
+    @Override
+    public Acceleration getAcceleration(final TacticalContextEgo context, final Length distance, final Speed leaderSpeed,
+            final double comfortLevel)
+    {
+        try
+        {
+            double b = this.settings.getParameter(ParameterTypes.B).si;
+            double b0 = this.settings.getParameter(ParameterTypes.B0).si;
+            double bEff = b - Math.min(0.999, comfortLevel) * (b - b0);
+            this.settings.setParameterResettable(ParameterTypes.B, Acceleration.ofSI(bEff));
+            Acceleration a = CarFollowingUtil.followSingleLeader(this.carFollowingModel, this.settings, leaderSpeed,
+                    context.getSpeedLimits(), context.getMaximumSpeed(), distance, leaderSpeed);
+            this.settings.resetParameter(ParameterTypes.B);
+            return a;
+        }
+        catch (ParameterException ex)
+        {
+            throw new OtsRuntimeException("Unable to determine acceleration of DCAS system.", ex);
         }
     }
 

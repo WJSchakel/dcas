@@ -12,6 +12,7 @@
     "dtDcas": "0.2s",
     "tocEscDcas": "3.0s",
     "xNetwork": "1000m",
+    "sensorRange": "150m",
     "cf":
     {
       "s0Dcas": "3.0m",
